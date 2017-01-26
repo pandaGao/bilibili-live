@@ -5,7 +5,6 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack && webpack --config webpack.config.min.js",
-    "publish": "npm run build && npm publish",
     "demo": "node ./example/example.js"
   },
   "author": "pandaGao <me@pandagao.com>",

@@ -13,7 +13,7 @@ npm install bilibili-live --save
 ```javascript
 var Live = require('bilibili-live')
 ```
-** Live.initRoom(config) **
+##### Live.initRoom(config)
 ```javascript
 Live.initRoom({
   roomId: 92052 // 必填项 直播间地址中的房间号 对于短位ID会自动获取真实房间号
@@ -57,7 +57,7 @@ Live.initRoom({
   })
 })
 ```
-** Live.initUser(config) **
+##### Live.initUser(config)
 ```javascript
 Live.initUser({
   cookie: 'xxxxx', // 必填项 bilibili.com cookie
