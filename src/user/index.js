@@ -67,7 +67,6 @@ class UserService {
   }
 
   sendMessageFromQueue () {
-    console.log('message queue:', this.messageQueue.length)
     if (this.messageQueue.length) {
       this.sendingMessage = true
       Util.sendMessage(this.cookie, this.messageQueue.shift()).then(res => {
