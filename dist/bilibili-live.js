@@ -1467,7 +1467,6 @@ var UserService = function () {
     value: function sendMessageFromQueue() {
       var _this2 = this;
 
-      console.log('message queue:', this.messageQueue.length);
       if (this.messageQueue.length) {
         this.sendingMessage = true;
         Util.sendMessage(this.cookie, this.messageQueue.shift()).then(function (res) {
