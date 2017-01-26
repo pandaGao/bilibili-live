@@ -1,6 +1,6 @@
 {
   "name": "bilibili-live",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Node Toolkit for bilibili live service",
   "main": "index.js",
   "scripts": {
@@ -20,8 +20,8 @@
     "webpack": "^2.2.0",
     "webpack-merge": "^2.4.0"
   },
-  "repository" : {
-    "type" : "git",
-    "url" : "https://github.com/pandaGao/bilibili-live"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pandaGao/bilibili-live"
   }
 }
