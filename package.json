@@ -1,0 +1,23 @@
+{
+  "name": "bilibili-live",
+  "version": "0.1.0",
+  "description": "A Node Toolkit for bilibili live service",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack && webpack --config webpack.config.min.js",
+    "demo": "node ./example/example.js"
+  },
+  "author": "pandaGao <me@pandagao.com>",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.15.3",
+    "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "babel-core": "^6.22.1",
+    "babel-loader": "^6.2.10",
+    "babel-preset-es2015": "^6.22.0",
+    "webpack": "^2.2.0",
+    "webpack-merge": "^2.4.0"
+  }
+}
