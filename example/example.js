@@ -2,7 +2,7 @@ let Live = require('../index.js')
 
 console.log('获取房间信息...')
 Live.initRoom({
-  roomId: 329
+  roomId: 92052
 }).then(room => {
   console.log('房间信息获取成功...')
   handleRoomMessage(room)
@@ -12,7 +12,7 @@ function handleRoomMessage (room) {
   room.on('connected', (msg) => {
     console.log('弹幕服务器连接成功...')
   }).on('data', (msg) => {
-
+    console.log(msg)
   }).on('error', (msg) => {
     console.log('连接发生错误，3秒后自动重连...')
   }).on('online', (msg) => {

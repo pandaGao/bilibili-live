@@ -15,6 +15,14 @@ function getPayload (buff) {
 function transformMessage (msg) {
   let message = {}
   switch (msg.cmd) {
+    case 'LIVE':
+      message.type = 'live'
+      message.roomId = msg.roomid
+      break
+    case 'PREPARING':
+      message.type = 'preparing'
+      message.roomId = msg.roomid
+      break
     case 'DANMU_MSG':
       message.type = 'comment'
       message.comment = msg.info[1]
@@ -89,6 +97,7 @@ function parseMessage (buff) {
       try {
         message = JSON.parse(payload)
         message = transformMessage(message)
+        message.originalPayload = payload.toString('utf8')
       } catch (e) {
         message = {
           type: 'incomplete',
@@ -99,6 +108,7 @@ function parseMessage (buff) {
     default:
       message = {
         type: 'unknownType',
+        originalType: type,
         msg: payload.toString('utf8')
       }
   }
