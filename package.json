@@ -4,8 +4,9 @@
   "description": "A Node Toolkit for bilibili live service",
   "main": "index.js",
   "scripts": {
-    "build": "webpack && webpack --config webpack.config.min.js",
-    "demo": "node ./example/example.js"
+    "build": "webpack",
+    "message": "node ./example/message.js",
+    "record": "node ./example/record.js"
   },
   "author": "pandaGao <me@pandagao.com>",
   "license": "MIT",

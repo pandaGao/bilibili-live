@@ -18,5 +18,10 @@ module.exports = {
       }
     ]
   },
+  resolve: {
+    alias: {
+      "lodash": "lodash/lodash.min.js"
+    }
+  },
   target: "node"
 }

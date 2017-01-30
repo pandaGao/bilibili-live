@@ -1,5 +1,8 @@
 const net = require('net')
 const EventEmitter = require('events')
+const path = require('path')
+const spawn = require('child_process').spawn
+
 const _ = require('lodash')
 const DMDecoder = require('./danmaku/decoder')
 const DMEncoder = require('./danmaku/encoder')
@@ -17,12 +20,16 @@ class RoomService extends EventEmitter {
     this.roomId = config.roomId
     this.roomURL = config.roomId
     this.roomRnd = config.roomRnd || ''
+    this.roomTitle = ''
+    this.roomAnchor = {}
     this.userId = config.userId || this.randUid()
     this.targetServer = config.server || DMSERVER
     this.targetPort = config.port || DMPORT
     this.socket = null
     this.heartbeatTimer = null
     this.giftEventQueue = []
+    this.recordProcess = null
+    this.forceEnd = false
   }
 
   getRoomId () {
@@ -37,14 +44,24 @@ class RoomService extends EventEmitter {
     return {
       id: this.roomId,
       url: this.roomURL,
-      rnd: this.roomRnd
+      rnd: this.roomRnd,
+      title: this.roomTitle,
+      anchor: this.roomAnchor
     }
   }
 
+  getRoomLivePlaylist () {
+    return Util.getRoomLivePlaylist(this.roomId)
+  }
+
   init () {
-    return Util.getRoomInfo(this.roomURL).then(room => {
+    return Util.getRoomId(this.roomURL).then(room => {
       this.roomId = room.id
       this.roomRnd = room.rnd
+      return Util.getRoomInfo(this.roomId)
+    }).then(room => {
+      this.roomTitle = room.title
+      this.roomAnchor = room.anchor
       this.connect()
       return this
     })
@@ -140,6 +157,56 @@ class RoomService extends EventEmitter {
         return true
       }
     })
+  }
+
+  startRecordLiveStream (filePath = '', fileName = `Room${this.roomURL}_${new Date().toJSON()}`) {
+    if (this.recordProcess) return
+    return Util.getRoomLivePlaylist(this.roomId).then((playlist) => {
+      this.recordProcess = spawn('ffmpeg', [
+        '-i',
+        playlist,
+        '-c',
+        'copy',
+        '-bsf:a',
+        'aac_adtstoasc',
+        path.format({
+          dir: filePath,
+          name: fileName,
+          ext: '.mp4'
+        })
+      ])
+
+      this.recordProcess.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`)
+      })
+
+      this.recordProcess.stderr.on('data', (data) => {
+        console.log(`stderr: ${data}`)
+      })
+
+      this.recordProcess.on('close', (code) => {
+        console.log(`Record process exited with code ${code}`)
+        this.recordProcess = null
+        if (this.forceEnd) {
+          this.forceEnd = false
+          this.emit('recordEnd')
+        } else {
+          Util.getRoomInfo(this.roomId).then(room => {
+            if (room.isLive) {
+              this.startRecordLiveStream(filePath, fileName)
+            } else {
+              this.emit('recordEnd')
+            }
+          })
+        }
+      })
+    })
+  }
+
+  endRecordLiveStream () {
+    if (!this.recordProcess) return
+    this.forceEnd = true
+    this.recordProcess.stdin.write('q')
   }
 }
 

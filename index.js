@@ -1,1 +1,1 @@
-module.exports = require('./dist/bilibili-live.min.js')
+module.exports = require('./dist/bilibili-live.js')

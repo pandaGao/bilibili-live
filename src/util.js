@@ -1,7 +1,7 @@
 const axios = require('axios')
 const querystring = require('querystring')
 
-function getRoomInfo (roomURL) {
+function getRoomId (roomURL) {
   return axios.get('http://live.bilibili.com/' + roomURL).then(res => {
     let room = {url: roomURL}
     let data = res.data
@@ -15,6 +15,21 @@ function getRoomInfo (roomURL) {
       room.rnd = reg[1]
     else
       room.rnd = ''
+    return room
+  })
+}
+
+function getRoomInfo (roomId) {
+  return axios.get('http://live.bilibili.com/live/getInfo?roomid=' + roomId).then(res => {
+    let data = res.data
+    let room = {}
+    room.title = data.data['ROOMTITLE']
+    room.anchor = {
+      id: data.data['MASTERID'],
+      name: data.data['ANCHOR_NICK_NAME']
+    }
+    room.fans = data.data['FANS_COUNT']
+    room.isLive = !!(data.data['_status'] == 'on')
     return room
   })
 }
@@ -40,6 +55,13 @@ function getRoomChatServer (roomId) {
   })
 }
 
+function getRoomLivePlaylist (roomId) {
+  return axios.get('http://api.live.bilibili.com/api/playurl?platform=h5&cid=' + roomId).then(res => {
+    let data = res.data
+    return data.data
+  })
+}
+
 function getUserInfo (cookie) {
   return axios.get('http://live.bilibili.com/user/getuserinfo', {
     headers: {
@@ -61,9 +83,11 @@ function sendMessage (cookie, data) {
 }
 
 module.exports = {
+  getRoomId,
   getRoomInfo,
   getRoomMessage,
   getRoomChatServer,
+  getRoomLivePlaylist,
   getUserInfo,
   sendMessage
 }
