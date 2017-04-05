@@ -1417,7 +1417,7 @@ var RoomService = function (_EventEmitter) {
       var _this8 = this;
 
       var filePath = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
-      var fileName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'Room' + this.roomURL + '_' + new Date().toJSON();
+      var fileName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'Room' + this.roomURL + '_' + new Date().toJSON().replace(/\:/g, '_');
 
       if (this.recordProcess) return;
       return Util.getRoomLivePlaylist(this.roomId).then(function (playlist) {

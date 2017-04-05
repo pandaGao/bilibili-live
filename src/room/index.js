@@ -159,7 +159,7 @@ class RoomService extends EventEmitter {
     })
   }
 
-  startRecordLiveStream (filePath = '', fileName = `Room${this.roomURL}_${new Date().toJSON()}`) {
+  startRecordLiveStream (filePath = '', fileName = `Room${this.roomURL}_${new Date().toJSON().replace(/\:/g,'_')}`) {
     if (this.recordProcess) return
     return Util.getRoomLivePlaylist(this.roomId).then((playlist) => {
       this.recordProcess = spawn('ffmpeg', [
