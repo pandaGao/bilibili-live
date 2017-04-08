@@ -2,7 +2,7 @@ let Live = require('../index.js')
 
 console.log('获取房间信息...')
 Live.initRoom({
-  roomId: 92052
+  roomId: 145
 }).then(room => {
   console.log('房间信息获取成功...')
   handleRoomMessage(room)

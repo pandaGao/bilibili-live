@@ -1,6 +1,8 @@
 const axios = require('axios')
 const querystring = require('querystring')
 
+axios.defaults.adapter = require('axios/lib/adapters/http')
+
 function getRoomId (roomURL) {
   return axios.get('http://live.bilibili.com/' + roomURL).then(res => {
     let room = {url: roomURL}

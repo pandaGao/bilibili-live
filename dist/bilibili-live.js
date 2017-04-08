@@ -76,7 +76,7 @@ module.exports =
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var bind = __webpack_require__(8);
+var bind = __webpack_require__(9);
 
 /*global toString:true*/
 
@@ -377,7 +377,7 @@ module.exports = {
 "use strict";
 
 
-var enhanceError = __webpack_require__(6);
+var enhanceError = __webpack_require__(7);
 
 /**
  * Create an Error with the specified message, config, error code, and response.
@@ -421,7 +421,7 @@ function getDefaultAdapter() {
     adapter = __webpack_require__(23);
   } else if (typeof process !== 'undefined') {
     // For node use HTTP adapter
-    adapter = __webpack_require__(22);
+    adapter = __webpack_require__(4);
   }
   return adapter;
 }
@@ -503,6 +503,235 @@ module.exports = __webpack_amd_options__;
 "use strict";
 
 
+var utils = __webpack_require__(0);
+var settle = __webpack_require__(8);
+var buildURL = __webpack_require__(10);
+var http = __webpack_require__(15);
+var https = __webpack_require__(16);
+var httpFollow = __webpack_require__(11).http;
+var httpsFollow = __webpack_require__(11).https;
+var url = __webpack_require__(18);
+var zlib = __webpack_require__(56);
+var pkg = __webpack_require__(21);
+var Buffer = __webpack_require__(47).Buffer;
+var createError = __webpack_require__(1);
+var enhanceError = __webpack_require__(7);
+
+/*eslint consistent-return:0*/
+module.exports = function httpAdapter(config) {
+  return new Promise(function dispatchHttpRequest(resolve, reject) {
+    var data = config.data;
+    var headers = config.headers;
+    var timer;
+    var aborted = false;
+
+    // Set User-Agent (required by some servers)
+    // Only set header if it hasn't been set in config
+    // See https://github.com/mzabriskie/axios/issues/69
+    if (!headers['User-Agent'] && !headers['user-agent']) {
+      headers['User-Agent'] = 'axios/' + pkg.version;
+    }
+
+    if (data && !utils.isStream(data)) {
+      if (utils.isArrayBuffer(data)) {
+        data = new Buffer(new Uint8Array(data));
+      } else if (utils.isString(data)) {
+        data = new Buffer(data, 'utf-8');
+      } else {
+        return reject(createError('Data after transformation must be a string, an ArrayBuffer, or a Stream', config));
+      }
+
+      // Add Content-Length header if data exists
+      headers['Content-Length'] = data.length;
+    }
+
+    // HTTP basic authentication
+    var auth = undefined;
+    if (config.auth) {
+      var username = config.auth.username || '';
+      var password = config.auth.password || '';
+      auth = username + ':' + password;
+    }
+
+    // Parse url
+    var parsed = url.parse(config.url);
+    var protocol = parsed.protocol || 'http:';
+
+    if (!auth && parsed.auth) {
+      var urlAuth = parsed.auth.split(':');
+      var urlUsername = urlAuth[0] || '';
+      var urlPassword = urlAuth[1] || '';
+      auth = urlUsername + ':' + urlPassword;
+    }
+
+    if (auth) {
+      delete headers.Authorization;
+    }
+
+    var isHttps = protocol === 'https:';
+    var agent = isHttps ? config.httpsAgent : config.httpAgent;
+
+    var options = {
+      hostname: parsed.hostname,
+      port: parsed.port,
+      path: buildURL(parsed.path, config.params, config.paramsSerializer).replace(/^\?/, ''),
+      method: config.method,
+      headers: headers,
+      agent: agent,
+      auth: auth
+    };
+
+    var proxy = config.proxy;
+    if (!proxy) {
+      var proxyEnv = protocol.slice(0, -1) + '_proxy';
+      var proxyUrl = process.env[proxyEnv] || process.env[proxyEnv.toUpperCase()];
+      if (proxyUrl) {
+        var parsedProxyUrl = url.parse(proxyUrl);
+        proxy = {
+          host: parsedProxyUrl.hostname,
+          port: parsedProxyUrl.port
+        };
+
+        if (parsedProxyUrl.auth) {
+          var proxyUrlAuth = parsedProxyUrl.auth.split(':');
+          proxy.auth = {
+            username: proxyUrlAuth[0],
+            password: proxyUrlAuth[1]
+          };
+        }
+      }
+    }
+
+    if (proxy) {
+      options.hostname = proxy.host;
+      options.host = proxy.host;
+      options.headers.host = parsed.hostname + (parsed.port ? ':' + parsed.port : '');
+      options.port = proxy.port;
+      options.path = protocol + '//' + parsed.hostname + (parsed.port ? ':' + parsed.port : '') + options.path;
+
+      // Basic proxy authorization
+      if (proxy.auth) {
+        var base64 = new Buffer(proxy.auth.username + ':' + proxy.auth.password, 'utf8').toString('base64');
+        options.headers['Proxy-Authorization'] = 'Basic ' + base64;
+      }
+    }
+
+    var transport;
+    if (config.maxRedirects === 0) {
+      transport = isHttps ? https : http;
+    } else {
+      if (config.maxRedirects) {
+        options.maxRedirects = config.maxRedirects;
+      }
+      transport = isHttps ? httpsFollow : httpFollow;
+    }
+
+    // Create the request
+    var req = transport.request(options, function handleResponse(res) {
+      if (aborted) return;
+
+      // Response has been received so kill timer that handles request timeout
+      clearTimeout(timer);
+      timer = null;
+
+      // uncompress the response body transparently if required
+      var stream = res;
+      switch (res.headers['content-encoding']) {
+        /*eslint default-case:0*/
+        case 'gzip':
+        case 'compress':
+        case 'deflate':
+          // add the unzipper to the body stream processing pipeline
+          stream = stream.pipe(zlib.createUnzip());
+
+          // remove the content-encoding in order to not confuse downstream operations
+          delete res.headers['content-encoding'];
+          break;
+      }
+
+      var response = {
+        status: res.statusCode,
+        statusText: res.statusMessage,
+        headers: res.headers,
+        config: config,
+        request: req
+      };
+
+      if (config.responseType === 'stream') {
+        response.data = stream;
+        settle(resolve, reject, response);
+      } else {
+        var responseBuffer = [];
+        stream.on('data', function handleStreamData(chunk) {
+          responseBuffer.push(chunk);
+
+          // make sure the content length is not over the maxContentLength if specified
+          if (config.maxContentLength > -1 && Buffer.concat(responseBuffer).length > config.maxContentLength) {
+            reject(createError('maxContentLength size of ' + config.maxContentLength + ' exceeded', config));
+          }
+        });
+
+        stream.on('error', function handleStreamError(err) {
+          if (aborted) return;
+          reject(enhanceError(err, config));
+        });
+
+        stream.on('end', function handleStreamEnd() {
+          var responseData = Buffer.concat(responseBuffer);
+          if (config.responseType !== 'arraybuffer') {
+            responseData = responseData.toString('utf8');
+          }
+
+          response.data = responseData;
+          settle(resolve, reject, response);
+        });
+      }
+    });
+
+    // Handle errors
+    req.on('error', function handleRequestError(err) {
+      if (aborted) return;
+      reject(enhanceError(err, config));
+    });
+
+    // Handle request timeout
+    if (config.timeout && !timer) {
+      timer = setTimeout(function handleRequestTimeout() {
+        req.abort();
+        reject(createError('timeout of ' + config.timeout + 'ms exceeded', config, 'ECONNABORTED'));
+        aborted = true;
+      }, config.timeout);
+    }
+
+    if (config.cancelToken) {
+      // Handle cancellation
+      config.cancelToken.promise.then(function onCanceled(cancel) {
+        if (aborted) {
+          return;
+        }
+
+        req.abort();
+        reject(cancel);
+        aborted = true;
+      });
+    }
+
+    // Send the request
+    if (utils.isStream(data)) {
+      data.pipe(req);
+    } else {
+      req.end(data);
+    }
+  });
+};
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 /**
  * A `Cancel` is an object that is thrown when an operation is canceled.
  *
@@ -523,7 +752,7 @@ Cancel.prototype.__CANCEL__ = true;
 module.exports = Cancel;
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -534,7 +763,7 @@ module.exports = function isCancel(value) {
 };
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -560,7 +789,7 @@ module.exports = function enhanceError(error, config, code, response) {
 };
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -586,7 +815,7 @@ module.exports = function settle(resolve, reject, response) {
 };
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -603,7 +832,7 @@ module.exports = function bind(fn, thisArg) {
 };
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -670,16 +899,16 @@ module.exports = function buildURL(url, params, paramsSerializer) {
 };
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var url = __webpack_require__(17);
+var url = __webpack_require__(18);
 var assert = __webpack_require__(46);
-var http = __webpack_require__(14);
-var https = __webpack_require__(15);
+var http = __webpack_require__(15);
+var https = __webpack_require__(16);
 var Writable = __webpack_require__(53).Writable;
 var debug = __webpack_require__(41)('follow-redirects');
 
@@ -860,7 +1089,7 @@ Object.keys(nativeProtocols).forEach(function (protocol) {
 });
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1067,7 +1296,7 @@ function coerce(val) {
 }
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1085,14 +1314,16 @@ module.exports = {
 };
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var axios = __webpack_require__(21);
+var axios = __webpack_require__(22);
 var querystring = __webpack_require__(52);
+
+axios.defaults.adapter = __webpack_require__(4);
 
 function getRoomId(roomURL) {
   return axios.get('http://live.bilibili.com/' + roomURL).then(function (res) {
@@ -1177,31 +1408,31 @@ module.exports = {
 };
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports) {
 
 module.exports = require("http");
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports) {
 
 module.exports = require("https");
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports) {
 
 module.exports = require("net");
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports) {
 
 module.exports = require("url");
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1215,7 +1446,7 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var net = __webpack_require__(16);
+var net = __webpack_require__(17);
 var EventEmitter = __webpack_require__(49);
 var path = __webpack_require__(51);
 var spawn = __webpack_require__(48).spawn;
@@ -1223,7 +1454,7 @@ var spawn = __webpack_require__(48).spawn;
 var _ = __webpack_require__(43);
 var DMDecoder = __webpack_require__(44);
 var DMEncoder = __webpack_require__(45);
-var Util = __webpack_require__(13);
+var Util = __webpack_require__(14);
 
 var DMSERVER = 'livecmt-2.bilibili.com';
 var DMPORT = 788;
@@ -1468,7 +1699,7 @@ var RoomService = function (_EventEmitter) {
 module.exports = RoomService;
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1478,7 +1709,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var Util = __webpack_require__(13);
+var Util = __webpack_require__(14);
 
 var DANMAKU_COLOR = {
   'white': 0xffffff,
@@ -1579,7 +1810,7 @@ var UserService = function () {
 module.exports = UserService;
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports) {
 
 module.exports = {
@@ -1664,242 +1895,13 @@ module.exports = {
 };
 
 /***/ }),
-/* 21 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-module.exports = __webpack_require__(24);
-
-/***/ }),
 /* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(0);
-var settle = __webpack_require__(7);
-var buildURL = __webpack_require__(9);
-var http = __webpack_require__(14);
-var https = __webpack_require__(15);
-var httpFollow = __webpack_require__(10).http;
-var httpsFollow = __webpack_require__(10).https;
-var url = __webpack_require__(17);
-var zlib = __webpack_require__(56);
-var pkg = __webpack_require__(20);
-var Buffer = __webpack_require__(47).Buffer;
-var createError = __webpack_require__(1);
-var enhanceError = __webpack_require__(6);
-
-/*eslint consistent-return:0*/
-module.exports = function httpAdapter(config) {
-  return new Promise(function dispatchHttpRequest(resolve, reject) {
-    var data = config.data;
-    var headers = config.headers;
-    var timer;
-    var aborted = false;
-
-    // Set User-Agent (required by some servers)
-    // Only set header if it hasn't been set in config
-    // See https://github.com/mzabriskie/axios/issues/69
-    if (!headers['User-Agent'] && !headers['user-agent']) {
-      headers['User-Agent'] = 'axios/' + pkg.version;
-    }
-
-    if (data && !utils.isStream(data)) {
-      if (utils.isArrayBuffer(data)) {
-        data = new Buffer(new Uint8Array(data));
-      } else if (utils.isString(data)) {
-        data = new Buffer(data, 'utf-8');
-      } else {
-        return reject(createError('Data after transformation must be a string, an ArrayBuffer, or a Stream', config));
-      }
-
-      // Add Content-Length header if data exists
-      headers['Content-Length'] = data.length;
-    }
-
-    // HTTP basic authentication
-    var auth = undefined;
-    if (config.auth) {
-      var username = config.auth.username || '';
-      var password = config.auth.password || '';
-      auth = username + ':' + password;
-    }
-
-    // Parse url
-    var parsed = url.parse(config.url);
-    var protocol = parsed.protocol || 'http:';
-
-    if (!auth && parsed.auth) {
-      var urlAuth = parsed.auth.split(':');
-      var urlUsername = urlAuth[0] || '';
-      var urlPassword = urlAuth[1] || '';
-      auth = urlUsername + ':' + urlPassword;
-    }
-
-    if (auth) {
-      delete headers.Authorization;
-    }
-
-    var isHttps = protocol === 'https:';
-    var agent = isHttps ? config.httpsAgent : config.httpAgent;
-
-    var options = {
-      hostname: parsed.hostname,
-      port: parsed.port,
-      path: buildURL(parsed.path, config.params, config.paramsSerializer).replace(/^\?/, ''),
-      method: config.method,
-      headers: headers,
-      agent: agent,
-      auth: auth
-    };
-
-    var proxy = config.proxy;
-    if (!proxy) {
-      var proxyEnv = protocol.slice(0, -1) + '_proxy';
-      var proxyUrl = process.env[proxyEnv] || process.env[proxyEnv.toUpperCase()];
-      if (proxyUrl) {
-        var parsedProxyUrl = url.parse(proxyUrl);
-        proxy = {
-          host: parsedProxyUrl.hostname,
-          port: parsedProxyUrl.port
-        };
-
-        if (parsedProxyUrl.auth) {
-          var proxyUrlAuth = parsedProxyUrl.auth.split(':');
-          proxy.auth = {
-            username: proxyUrlAuth[0],
-            password: proxyUrlAuth[1]
-          };
-        }
-      }
-    }
-
-    if (proxy) {
-      options.hostname = proxy.host;
-      options.host = proxy.host;
-      options.headers.host = parsed.hostname + (parsed.port ? ':' + parsed.port : '');
-      options.port = proxy.port;
-      options.path = protocol + '//' + parsed.hostname + (parsed.port ? ':' + parsed.port : '') + options.path;
-
-      // Basic proxy authorization
-      if (proxy.auth) {
-        var base64 = new Buffer(proxy.auth.username + ':' + proxy.auth.password, 'utf8').toString('base64');
-        options.headers['Proxy-Authorization'] = 'Basic ' + base64;
-      }
-    }
-
-    var transport;
-    if (config.maxRedirects === 0) {
-      transport = isHttps ? https : http;
-    } else {
-      if (config.maxRedirects) {
-        options.maxRedirects = config.maxRedirects;
-      }
-      transport = isHttps ? httpsFollow : httpFollow;
-    }
-
-    // Create the request
-    var req = transport.request(options, function handleResponse(res) {
-      if (aborted) return;
-
-      // Response has been received so kill timer that handles request timeout
-      clearTimeout(timer);
-      timer = null;
-
-      // uncompress the response body transparently if required
-      var stream = res;
-      switch (res.headers['content-encoding']) {
-        /*eslint default-case:0*/
-        case 'gzip':
-        case 'compress':
-        case 'deflate':
-          // add the unzipper to the body stream processing pipeline
-          stream = stream.pipe(zlib.createUnzip());
-
-          // remove the content-encoding in order to not confuse downstream operations
-          delete res.headers['content-encoding'];
-          break;
-      }
-
-      var response = {
-        status: res.statusCode,
-        statusText: res.statusMessage,
-        headers: res.headers,
-        config: config,
-        request: req
-      };
-
-      if (config.responseType === 'stream') {
-        response.data = stream;
-        settle(resolve, reject, response);
-      } else {
-        var responseBuffer = [];
-        stream.on('data', function handleStreamData(chunk) {
-          responseBuffer.push(chunk);
-
-          // make sure the content length is not over the maxContentLength if specified
-          if (config.maxContentLength > -1 && Buffer.concat(responseBuffer).length > config.maxContentLength) {
-            reject(createError('maxContentLength size of ' + config.maxContentLength + ' exceeded', config));
-          }
-        });
-
-        stream.on('error', function handleStreamError(err) {
-          if (aborted) return;
-          reject(enhanceError(err, config));
-        });
-
-        stream.on('end', function handleStreamEnd() {
-          var responseData = Buffer.concat(responseBuffer);
-          if (config.responseType !== 'arraybuffer') {
-            responseData = responseData.toString('utf8');
-          }
-
-          response.data = responseData;
-          settle(resolve, reject, response);
-        });
-      }
-    });
-
-    // Handle errors
-    req.on('error', function handleRequestError(err) {
-      if (aborted) return;
-      reject(enhanceError(err, config));
-    });
-
-    // Handle request timeout
-    if (config.timeout && !timer) {
-      timer = setTimeout(function handleRequestTimeout() {
-        req.abort();
-        reject(createError('timeout of ' + config.timeout + 'ms exceeded', config, 'ECONNABORTED'));
-        aborted = true;
-      }, config.timeout);
-    }
-
-    if (config.cancelToken) {
-      // Handle cancellation
-      config.cancelToken.promise.then(function onCanceled(cancel) {
-        if (aborted) {
-          return;
-        }
-
-        req.abort();
-        reject(cancel);
-        aborted = true;
-      });
-    }
-
-    // Send the request
-    if (utils.isStream(data)) {
-      data.pipe(req);
-    } else {
-      req.end(data);
-    }
-  });
-};
+module.exports = __webpack_require__(24);
 
 /***/ }),
 /* 23 */
@@ -1909,8 +1911,8 @@ module.exports = function httpAdapter(config) {
 
 
 var utils = __webpack_require__(0);
-var settle = __webpack_require__(7);
-var buildURL = __webpack_require__(9);
+var settle = __webpack_require__(8);
+var buildURL = __webpack_require__(10);
 var parseHeaders = __webpack_require__(36);
 var isURLSameOrigin = __webpack_require__(34);
 var createError = __webpack_require__(1);
@@ -2087,7 +2089,7 @@ module.exports = function xhrAdapter(config) {
 
 
 var utils = __webpack_require__(0);
-var bind = __webpack_require__(8);
+var bind = __webpack_require__(9);
 var Axios = __webpack_require__(26);
 var defaults = __webpack_require__(2);
 
@@ -2122,9 +2124,9 @@ axios.create = function create(instanceConfig) {
 };
 
 // Expose Cancel & CancelToken
-axios.Cancel = __webpack_require__(4);
+axios.Cancel = __webpack_require__(5);
 axios.CancelToken = __webpack_require__(25);
-axios.isCancel = __webpack_require__(5);
+axios.isCancel = __webpack_require__(6);
 
 // Expose all/spread
 axios.all = function all(promises) {
@@ -2144,7 +2146,7 @@ module.exports.default = axios;
 "use strict";
 
 
-var Cancel = __webpack_require__(4);
+var Cancel = __webpack_require__(5);
 
 /**
  * A `CancelToken` is an object that can be used to request cancellation of an operation.
@@ -2358,7 +2360,7 @@ module.exports = InterceptorManager;
 
 var utils = __webpack_require__(0);
 var transformData = __webpack_require__(29);
-var isCancel = __webpack_require__(5);
+var isCancel = __webpack_require__(6);
 var defaults = __webpack_require__(2);
 
 /**
@@ -2946,7 +2948,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
  * Expose `debug()` as the module.
  */
 
-exports = module.exports = __webpack_require__(11);
+exports = module.exports = __webpack_require__(12);
 exports.log = log;
 exports.formatArgs = formatArgs;
 exports.save = save;
@@ -3143,7 +3145,7 @@ var util = __webpack_require__(55);
  * Expose `debug()` as the module.
  */
 
-exports = module.exports = __webpack_require__(11);
+exports = module.exports = __webpack_require__(12);
 exports.init = init;
 exports.log = log;
 exports.formatArgs = formatArgs;
@@ -3310,7 +3312,7 @@ function createWritableStdioStream(fd) {
 
     case 'PIPE':
     case 'TCP':
-      var net = __webpack_require__(16);
+      var net = __webpack_require__(17);
       stream = new net.Socket({
         fd: fd,
         readable: false,
@@ -5550,7 +5552,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 "use strict";
 
 
-var Consts = __webpack_require__(12);
+var Consts = __webpack_require__(13);
 
 function getMessageType(buff) {
   return buff.readInt32BE(8) - 1;
@@ -5699,7 +5701,7 @@ module.exports = {
 "use strict";
 
 
-var Consts = __webpack_require__(12);
+var Consts = __webpack_require__(13);
 
 function getPacketLength(payload) {
   return Buffer.byteLength(payload) + Consts.headerLength;
@@ -5825,8 +5827,8 @@ module.exports = require("zlib");
 "use strict";
 
 
-var Room = __webpack_require__(18);
-var User = __webpack_require__(19);
+var Room = __webpack_require__(19);
+var User = __webpack_require__(20);
 
 function initRoom(config) {
   return new Room(config).init();
