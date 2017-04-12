@@ -5615,7 +5615,7 @@ function transformMessage(msg) {
       message.user = {
         id: msg.data.uid,
         name: msg.data.username,
-        level: msg.data.guard_level
+        guard: msg.data.guard_level
       };
       break;
     case 'GUARD_BUY':
