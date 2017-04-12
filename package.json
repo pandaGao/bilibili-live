@@ -1,6 +1,6 @@
 {
   "name": "bilibili-live",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A Node Toolkit for bilibili live service",
   "main": "index.js",
   "scripts": {
