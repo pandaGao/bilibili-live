@@ -93,6 +93,7 @@ function transformMessage (msg) {
         id: msg.uid,
         name: msg.uname
       }
+      break
     default:
       message = msg
       message.type = msg.cmd
