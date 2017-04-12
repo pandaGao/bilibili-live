@@ -31,7 +31,8 @@ function transformMessage (msg) {
         name: msg.info[2][1],
         isAdmin: !!msg.info[2][2],
         isVIP: !!msg.info[2][3],
-        isSVIP: !!msg.info[2][4]
+        isSVIP: !!msg.info[2][4],
+        guard: msg.info[7]
       }
       if (msg.info[3].length) {
         message.user.badge = {
@@ -55,6 +56,23 @@ function transformMessage (msg) {
         isSVIP: !!msg.data.svip
       }
       break
+    case 'WELCOME_GUARD':
+      message.type = 'welcomeGuard'
+      message.user = {
+        id: msg.data.uid,
+        name: msg.data.username,
+        level: msg.data.guard_level
+      }
+      break
+    case 'GUARD_BUY':
+      message.type = 'guardBuy'
+      message.user = {
+        id: msg.data.uid,
+        name: msg.data.username
+      }
+      message.level = msg.data.guard_level
+      message.count = msg.data.num
+      break
     case 'SEND_GIFT':
       message.type = 'gift'
       message.gift = {
@@ -73,7 +91,7 @@ function transformMessage (msg) {
       message.type = 'block'
       message.user = {
         id: msg.uid,
-        name: msg.name
+        name: msg.uname
       }
     default:
       message = msg
