@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   version: 1,
   magic: 16,
   magicParam: 1,

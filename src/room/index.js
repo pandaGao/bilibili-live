@@ -1,12 +1,12 @@
-const net = require('net')
-const EventEmitter = require('events')
-const path = require('path')
-const spawn = require('child_process').spawn
+import net from 'net'
+import EventEmitter from 'events'
+import path from 'path'
+import { spawn } from 'child_process'
 
-const _ = require('lodash')
-const DMDecoder = require('./danmaku/decoder')
-const DMEncoder = require('./danmaku/encoder')
-const Util = require('../util.js')
+import _ from 'lodash'
+import DMDecoder from './danmaku/decoder'
+import DMEncoder from './danmaku/encoder'
+import Util from '../util.js'
 
 const DMSERVER = 'livecmt-2.bilibili.com'
 const DMPORT = 788
@@ -210,4 +210,4 @@ class RoomService extends EventEmitter {
   }
 }
 
-module.exports = RoomService
+export default RoomService

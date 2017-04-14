@@ -1,4 +1,4 @@
-let Live = require('../index.js')
+let Live = require('../dist/bilibili-live.js').default
 
 console.log('获取房间信息...')
 Live.initRoom({

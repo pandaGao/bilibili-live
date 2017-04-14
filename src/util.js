@@ -1,6 +1,5 @@
-const axios = require('axios')
-const querystring = require('querystring')
-const request = require('./request.js')
+import querystring from 'querystring'
+import request from './request.js'
 
 function getRoomId (roomURL) {
   return request.get('http://live.bilibili.com/' + roomURL).then(res => {
@@ -98,7 +97,7 @@ function sendMessage (cookie, data) {
   })
 }
 
-module.exports = {
+export default {
   getRoomId,
   getRoomInfo,
   getRoomMessage,

@@ -1,4 +1,4 @@
-const Util = require('../util.js')
+import Util from '../util.js'
 
 const DANMAKU_COLOR = {
   'white': 0xffffff,
@@ -82,4 +82,4 @@ class UserService {
   }
 }
 
-module.exports = UserService
+export default UserService

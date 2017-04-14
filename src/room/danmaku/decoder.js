@@ -1,4 +1,4 @@
-const Consts = require('./consts.js')
+import Consts from './consts.js'
 
 function getMessageType (buff) {
   return buff.readInt32BE(8) - 1
@@ -156,6 +156,6 @@ function decodeData (buff) {
   return messages
 }
 
-module.exports = {
+export default {
   decodeData
 }

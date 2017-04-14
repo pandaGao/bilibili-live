@@ -2,7 +2,7 @@
   "name": "bilibili-live",
   "version": "0.4.4",
   "description": "A Node Toolkit for bilibili live service",
-  "main": "index.js",
+  "main": "./dist/bilibili-live.js",
   "scripts": {
     "build": "webpack",
     "message": "node ./example/message.js",

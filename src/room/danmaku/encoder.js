@@ -1,4 +1,4 @@
-const Consts = require('./consts.js')
+import Consts from './consts.js'
 
 function getPacketLength (payload) {
   return Buffer.byteLength(payload) + Consts.headerLength
@@ -46,7 +46,7 @@ function encodeJoinRoom (rid, uid) {
   return generatePacket(Consts.actions.joinChannel, packet)
 }
 
-module.exports = {
+export default {
   encodeJoinRoom,
   encodeHeartbeat,
 }

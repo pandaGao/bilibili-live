@@ -1,6 +1,6 @@
-const http = require('http')
-const url = require('url')
-const qs = require('querystring')
+import http from 'http'
+import url from 'url'
+import qs from 'querystring'
 
 function get (requestUrl, config = {}) {
   let parsed = url.parse(requestUrl)
@@ -63,7 +63,7 @@ function dispatchRequest (options, postData) {
   })
 }
 
-module.exports = {
+export default {
   get,
   post
 }
