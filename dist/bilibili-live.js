@@ -195,6 +195,27 @@ function getUserInfo(cookie) {
   });
 }
 
+function getUserFans(uid, page) {
+  return _request2.default.get('http://space.bilibili.com/ajax/friend/GetFansList?mid=4548018&page=1&_=1492189208778', {
+    params: {
+      mid: uid,
+      page: page,
+      _: new Date().getTime()
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res);
+    return {
+      fans: data.data.list.map(function (fan) {
+        return {
+          id: fan.fid,
+          name: fan.uname
+        };
+      }),
+      total: data.data.results
+    };
+  });
+}
+
 function sendMessage(cookie, data) {
   return _request2.default.post('http://live.bilibili.com/msg/send', {
     body: _querystring2.default.stringify(data),
@@ -212,6 +233,7 @@ exports.default = {
   getRoomChatServer: getRoomChatServer,
   getRoomLivePlaylist: getRoomLivePlaylist,
   getUserInfo: getUserInfo,
+  getUserFans: getUserFans,
   sendMessage: sendMessage
 };
 
@@ -299,6 +321,8 @@ var RoomService = function (_EventEmitter) {
     _this.socket = null;
     _this.heartbeatTimer = null;
     _this.giftEventQueue = [];
+    _this.fansService = false;
+    _this.latestFansList = [];
     _this.recordProcess = null;
     _this.forceEnd = false;
     return _this;
@@ -350,6 +374,10 @@ var RoomService = function (_EventEmitter) {
     key: 'connect',
     value: function connect() {
       this.socket = _net2.default.connect(this.targetPort, this.targetServer);
+      if (!this.fansService) {
+        this.fetchFans();
+        this.fansService = true;
+      }
       this.handleEvents();
     }
   }, {
@@ -419,9 +447,45 @@ var RoomService = function (_EventEmitter) {
       this.socket.write(_encoder2.default.encodeHeartbeat());
     }
   }, {
+    key: 'fetchFans',
+    value: function fetchFans() {
+      var _this6 = this;
+
+      _util2.default.getUserFans(this.roomAnchor.id, 1).then(function (res) {
+        var hash = _this6.latestFansList.reduce(function (pre, cur) {
+          pre[cur.id] = cur;
+          return pre;
+        }, {});
+        var newFans = [];
+        if (_this6.latestFansList.length) {
+          newFans = res.fans.reduce(function (pre, cur) {
+            if (!hash[cur.id]) {
+              pre.push(cur);
+            }
+            return pre;
+          }, []);
+        }
+        _this6.latestFansList = res.fans;
+        setTimeout(function () {
+          _this6.fetchFans();
+        }, 3000);
+        var msg = {
+          type: 'fans',
+          total: res.total,
+          newFans: newFans
+        };
+        _this6.emit('data', msg);
+        _this6.emit('fans', msg);
+      }).catch(function (res) {
+        setTimeout(function () {
+          _this6.fetchFans();
+        }, 3000);
+      });
+    }
+  }, {
     key: 'pushGiftQueue',
     value: function pushGiftQueue(msg) {
-      var _this6 = this;
+      var _this7 = this;
 
       var giftEvent = null;
       var sameGiftEvent = this.giftEventQueue.some(function (m) {
@@ -438,8 +502,8 @@ var RoomService = function (_EventEmitter) {
         giftEvent = {
           msg: _lodash2.default.merge({}, msg),
           event: _lodash2.default.debounce(function () {
-            _this6.emit('giftEnd', giftEvent.msg);
-            _this6.shiftGiftQueue(giftEvent.msg);
+            _this7.emit('giftEnd', giftEvent.msg);
+            _this7.shiftGiftQueue(giftEvent.msg);
           }, GIFT_END_DELAY)
         };
         giftEvent.event();
@@ -449,11 +513,11 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'shiftGiftQueue',
     value: function shiftGiftQueue(msg) {
-      var _this7 = this;
+      var _this8 = this;
 
       this.giftEventQueue.some(function (m, idx) {
         if (m.msg.user.id === msg.user.id && m.msg.gift.id === msg.gift.id) {
-          _this7.giftEventQueue.splice(idx, 1);
+          _this8.giftEventQueue.splice(idx, 1);
           return true;
         }
       });
@@ -461,39 +525,39 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'startRecordLiveStream',
     value: function startRecordLiveStream() {
-      var _this8 = this;
+      var _this9 = this;
 
       var filePath = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
       var fileName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'Room' + this.roomURL + '_' + new Date().toJSON();
 
       if (this.recordProcess) return;
       return _util2.default.getRoomLivePlaylist(this.roomId).then(function (playlist) {
-        _this8.recordProcess = (0, _child_process.spawn)('ffmpeg', ['-i', playlist, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', _path2.default.format({
+        _this9.recordProcess = (0, _child_process.spawn)('ffmpeg', ['-i', playlist, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', _path2.default.format({
           dir: filePath,
           name: fileName,
           ext: '.mp4'
         })]);
 
-        _this8.recordProcess.stdout.on('data', function (data) {
+        _this9.recordProcess.stdout.on('data', function (data) {
           console.log('stdout: ' + data);
         });
 
-        _this8.recordProcess.stderr.on('data', function (data) {
+        _this9.recordProcess.stderr.on('data', function (data) {
           console.log('stderr: ' + data);
         });
 
-        _this8.recordProcess.on('close', function (code) {
+        _this9.recordProcess.on('close', function (code) {
           console.log('Record process exited with code ' + code);
-          _this8.recordProcess = null;
-          if (_this8.forceEnd) {
-            _this8.forceEnd = false;
-            _this8.emit('recordEnd');
+          _this9.recordProcess = null;
+          if (_this9.forceEnd) {
+            _this9.forceEnd = false;
+            _this9.emit('recordEnd');
           } else {
-            _util2.default.getRoomInfo(_this8.roomId).then(function (room) {
+            _util2.default.getRoomInfo(_this9.roomId).then(function (room) {
               if (room.isLive) {
-                _this8.startRecordLiveStream(filePath, fileName);
+                _this9.startRecordLiveStream(filePath, fileName);
               } else {
-                _this8.emit('recordEnd');
+                _this9.emit('recordEnd');
               }
             });
           }

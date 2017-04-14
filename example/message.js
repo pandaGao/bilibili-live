@@ -2,7 +2,7 @@ let Live = require('../dist/bilibili-live.js').default
 
 console.log('获取房间信息...')
 Live.initRoom({
-  roomId: 118
+  roomId: 145
 }).then(room => {
   console.log('房间信息获取成功...')
   handleRoomMessage(room)
@@ -17,6 +17,11 @@ function handleRoomMessage (room) {
     console.log('连接发生错误，3秒后自动重连...')
   }).on('online', (msg) => {
     console.log(`当前在线人数 ${msg.number}`)
+  }).on('fans', (msg) => {
+    console.log(`当前粉丝数 ${msg.total}`)
+    msg.newFans.map((fan) => {
+      console.log(`${fan.name} 关注了直播间`)
+    })
   }).on('welcome', (msg) => {
     let title = ''
     if (msg.user.isVIP) {

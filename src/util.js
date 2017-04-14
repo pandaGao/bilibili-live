@@ -87,6 +87,27 @@ function getUserInfo (cookie) {
   })
 }
 
+function getUserFans (uid, page) {
+  return request.get('http://space.bilibili.com/ajax/friend/GetFansList?mid=4548018&page=1&_=1492189208778', {
+    params: {
+      mid: uid,
+      page: page,
+      _: new Date().getTime()
+    }
+  }).then(res => {
+    let data = JSON.parse(res)
+    return {
+      fans: data.data.list.map(fan => {
+        return {
+          id: fan.fid,
+          name: fan.uname
+        }
+      }),
+      total: data.data.results
+    }
+  })
+}
+
 function sendMessage (cookie, data) {
   return request.post('http://live.bilibili.com/msg/send', {
     body: querystring.stringify(data),
@@ -104,5 +125,6 @@ export default {
   getRoomChatServer,
   getRoomLivePlaylist,
   getUserInfo,
+  getUserFans,
   sendMessage
 }

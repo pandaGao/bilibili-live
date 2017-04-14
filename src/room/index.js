@@ -28,6 +28,8 @@ class RoomService extends EventEmitter {
     this.socket = null
     this.heartbeatTimer = null
     this.giftEventQueue = []
+    this.fansService = false
+    this.latestFansList = []
     this.recordProcess = null
     this.forceEnd = false
   }
@@ -69,6 +71,10 @@ class RoomService extends EventEmitter {
 
   connect () {
     this.socket = net.connect(this.targetPort, this.targetServer)
+    if (!this.fansService) {
+      this.fetchFans()
+      this.fansService = true
+    }
     this.handleEvents()
   }
 
@@ -123,6 +129,39 @@ class RoomService extends EventEmitter {
 
   sendHeartbeat () {
     this.socket.write(DMEncoder.encodeHeartbeat())
+  }
+
+  fetchFans () {
+    Util.getUserFans(this.roomAnchor.id, 1).then(res => {
+      let hash = this.latestFansList.reduce((pre,cur) => {
+        pre[cur.id] = cur
+        return pre
+      }, {})
+      let newFans = []
+      if (this.latestFansList.length) {
+        newFans = res.fans.reduce((pre,cur) => {
+          if (!hash[cur.id]) {
+            pre.push(cur)
+          }
+          return pre
+        }, [])
+      }
+      this.latestFansList = res.fans
+      setTimeout(() => {
+        this.fetchFans()
+      }, 3000)
+      let msg = {
+        type: 'fans',
+        total: res.total,
+        newFans: newFans
+      }
+      this.emit('data', msg)
+      this.emit('fans', msg)
+    }).catch(res => {
+      setTimeout(() => {
+        this.fetchFans()
+      }, 3000)
+    })
   }
 
   pushGiftQueue (msg) {
