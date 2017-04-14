@@ -11,7 +11,9 @@ npm install bilibili-live --save
 ## Documentation
 
 ```javascript
-var Live = require('bilibili-live')
+var Live = require('bilibili-live').default
+or
+import Live from 'bilibili-live'
 ```
 ##### Live.initRoom(config)
 ```javascript
@@ -22,6 +24,12 @@ Live.initRoom({
   room.on('error') // 连接出错时触发
   room.on('online', (msg) => { // 当前在线人数
     console.log('当前在线人数' + msg.number)
+  })
+  room.on('fans', (msg) => { // 当前粉丝数 和 新关注列表
+    console.log(`当前粉丝数 ${msg.total}`)
+    msg.newFans.map((fan) => {
+      console.log(`${fan.name} 关注了直播间`)
+    })
   })
   room.on('welcome', (msg) => { // 欢迎信息
     let title = ''
