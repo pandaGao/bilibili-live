@@ -5,7 +5,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "bilibili-live.js",
-    libraryTarget: "commonjs-module"
+    libraryTarget: "commonjs2"
   },
   module: {
     rules: [

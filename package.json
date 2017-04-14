@@ -11,7 +11,6 @@
   "author": "pandaGao <me@pandagao.com>",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.15.3",
     "lodash": "^4.17.4"
   },
   "devDependencies": {

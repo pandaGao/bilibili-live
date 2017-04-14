@@ -1,17 +1,16 @@
 const axios = require('axios')
 const querystring = require('querystring')
-
-axios.defaults.adapter = require('axios/lib/adapters/http')
+const request = require('./request.js')
 
 function getRoomId (roomURL) {
-  return axios.get('http://live.bilibili.com/' + roomURL).then(res => {
+  return request.get('http://live.bilibili.com/' + roomURL).then(res => {
     let room = {url: roomURL}
-    let data = res.data
+    let data = res
     let reg = data.match(/ROOMID \= (.*?)\;/)
     if (reg && reg.length >= 2)
       room.id = reg[1]
     else
-      room.id = liveid
+      room.id = roomURL
     reg = data.match(/DANMU_RND \= (.*?)\;/)
     if (reg && reg.length >= 2)
       room.rnd = reg[1]
@@ -22,8 +21,12 @@ function getRoomId (roomURL) {
 }
 
 function getRoomInfo (roomId) {
-  return axios.get('http://live.bilibili.com/live/getInfo?roomid=' + roomId).then(res => {
-    let data = res.data
+  return request.get('http://live.bilibili.com/live/getInfo', {
+    params: {
+      roomid: roomId
+    }
+  }).then(res => {
+    let data = JSON.parse(res)
     let room = {}
     room.title = data.data['ROOMTITLE']
     room.anchor = {
@@ -37,9 +40,10 @@ function getRoomInfo (roomId) {
 }
 
 function getRoomMessage (roomId) {
-  return axios.post('http://api.live.bilibili.com/ajax/msg', querystring.stringify({
-    roomid: roomId
-  }), {
+  return request.post('http://api.live.bilibili.com/ajax/msg', {
+    body: querystring.stringify({
+      roomid: roomId
+    }),
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }
@@ -47,8 +51,12 @@ function getRoomMessage (roomId) {
 }
 
 function getRoomChatServer (roomId) {
-  return axios.get('http://live.bilibili.com/api/player?id=cid:' + roomId).then(res => {
-    let data = res.data
+  return request.get('http://live.bilibili.com/api/player', {
+    params: {
+      id: 'cid:' + roomId
+    }
+  }).then(res => {
+    let data = res
     let reg = data.match(/<server>(.*?)<\/server>/)
     if (reg && reg.length >= 2)
       return reg[1]
@@ -58,25 +66,31 @@ function getRoomChatServer (roomId) {
 }
 
 function getRoomLivePlaylist (roomId) {
-  return axios.get('http://api.live.bilibili.com/api/playurl?platform=h5&cid=' + roomId).then(res => {
-    let data = res.data
+  return request.get('http://api.live.bilibili.com/api/playurl', {
+    params: {
+      platform: 'h5',
+      cid: roomId
+    }
+  }).then(res => {
+    let data = JSON.parse(res)
     return data.data
   })
 }
 
 function getUserInfo (cookie) {
-  return axios.get('http://live.bilibili.com/user/getuserinfo', {
+  return request.get('http://live.bilibili.com/user/getuserinfo', {
     headers: {
       'Cookie': cookie
     }
   }).then(res => {
-    let data = res.data
+    let data = JSON.parse(res)
     return data
   })
 }
 
 function sendMessage (cookie, data) {
-  return axios.post('http://live.bilibili.com/msg/send',  querystring.stringify(data), {
+  return request.post('http://live.bilibili.com/msg/send', {
+    body: querystring.stringify(data),
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Cookie': cookie
