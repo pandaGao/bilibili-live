@@ -17,7 +17,7 @@ function decodeBuffer (buff) {
     data.body = []
     let packetLen = data.packetLen
     let headerLen = 0
-    for (let offset = Consts.WS_PACKAGE_OFFSET; offset < buff.length; offset += packetLen) {
+    for (let offset = Consts.WS_PACKAGE_OFFSET; offset < buff.byteLength; offset += packetLen) {
       packetLen = buff.readInt32BE(offset)
       headerLen = buff.readInt16BE(offset + Consts.WS_HEADER_OFFSET)
       try {

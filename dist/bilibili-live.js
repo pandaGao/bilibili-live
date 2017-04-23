@@ -3093,7 +3093,7 @@ function decodeBuffer(buff) {
     data.body = [];
     var packetLen = data.packetLen;
     var headerLen = 0;
-    for (var offset = _consts2.default.WS_PACKAGE_OFFSET; offset < buff.length; offset += packetLen) {
+    for (var offset = _consts2.default.WS_PACKAGE_OFFSET; offset < buff.byteLength; offset += packetLen) {
       packetLen = buff.readInt32BE(offset);
       headerLen = buff.readInt16BE(offset + _consts2.default.WS_HEADER_OFFSET);
       try {
