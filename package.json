@@ -5,8 +5,8 @@
   "main": "./dist/bilibili-live.js",
   "scripts": {
     "build": "webpack",
-    "message": "node ./example/message.js",
-    "record": "node ./example/record.js"
+    "message": "node --inspect ./example/message.js",
+    "record": "node --inspect ./example/record.js"
   },
   "author": "pandaGao <me@pandagao.com>",
   "license": "MIT",

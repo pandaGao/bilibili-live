@@ -1,15 +1,56 @@
 import Consts from './consts.js'
+import { StringDecoder } from 'string_decoder'
 
-function getMessageType (buff) {
-  return buff.readInt32BE(8) - 1
+const textDecoder = new StringDecoder('utf8')
+
+function decodeBuffer (buff) {
+  let data = {}
+  data.packetLen = buff.readInt32BE(Consts.WS_PACKAGE_OFFSET)
+  Consts.dataStruct.forEach((struct) => {
+    if (struct.bytes === 4) {
+      data[struct.key] = buff.readInt32BE(struct.offset)
+    } else if (struct.bytes === 2) {
+      data[struct.key] = buff.readInt16BE(struct.offset)
+    }
+  })
+  if (data.op && data.op === Consts.WS_OP_MESSAGE) {
+    data.body = []
+    let packetLen = data.packetLen
+    let headerLen = 0
+    for (let offset = Consts.WS_PACKAGE_OFFSET; offset < buff.length ; offset += packetLen) {
+      packetLen = buff.readInt32BE(offset)
+      headerLen = buff.readInt16BE(offset + Consts.WS_HEADER_OFFSET)
+      try {
+        let body = JSON.parse(textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)))
+        data.body.push(body)
+      } catch (e) {
+        console.log("decode body error:", new Uint8Array(buff), data)
+      }
+    }
+  } else if (data.op && data.op === Consts.WS_OP_HEARTBEAT_REPLY) {
+    data.body = {
+      number: buff.readInt32BE(Consts.WS_PACKAGE_HEADER_TOTAL_LENGTH)
+    }
+  }
+  return data
 }
 
-function getMessageLength (buff) {
-  return buff.readInt32BE(0)
-}
-
-function getPayload (buff) {
-  return buff.slice(Consts.headerLength)
+function parseMessage (msg) {
+  switch (msg.op) {
+    case Consts.WS_OP_HEARTBEAT_REPLY:
+      msg.body.type = 'online'
+      msg.body.ts = new Date().getTime()
+      return msg.body
+    case Consts.WS_OP_MESSAGE:
+      return msg.body.map((m) => {
+        return transformMessage(m)
+      })
+    case Consts.WS_OP_CONNECT_SUCCESS:
+      return {
+        type: 'connectSuccess',
+        ts: new Date().getTime()
+      }
+  }
 }
 
 function transformMessage (msg) {
@@ -98,60 +139,19 @@ function transformMessage (msg) {
       message = msg
       message.type = msg.cmd
   }
-  return message
-}
-
-function parseMessage (buff) {
-  let message = {}
-  let type = getMessageType(buff)
-  let payload = getPayload(buff)
-  switch (type) {
-    case 2:
-      message = {
-        type: 'online',
-        number: payload.readUInt32BE()
-      }
-      break
-    case 4:
-      try {
-        message = JSON.parse(payload)
-        message = transformMessage(message)
-        message.originalPayload = payload.toString('utf8')
-      } catch (e) {
-        message = {
-          type: 'incomplete',
-          msg: payload.toString('utf8')
-        }
-      }
-      break
-    default:
-      message = {
-        type: 'unknownType',
-        originalType: type,
-        msg: payload.toString('utf8')
-      }
-  }
+  message.ts = new Date().getTime()
   return message
 }
 
 function decodeData (buff) {
   let messages = []
-  let dataBuff = buff
-  let bufferLength = dataBuff.length
-  let messageLength = getMessageLength(dataBuff)
-  while (bufferLength >= messageLength) {
-    try {
-      messages.push(parseMessage(dataBuff.slice(0, messageLength)))
-    } catch (e) {
-      console.log('Error Message:')
-      console.log(e)
-      break
-    }
-    dataBuff = dataBuff.slice(messageLength)
-    bufferLength = dataBuff.length
-    if (!bufferLength)
-      break
-    messageLength = getMessageLength(dataBuff)
+  let data = parseMessage(decodeBuffer(buff))
+  if (data instanceof Array) {
+    data.forEach((m) => {
+      messages.push(m)
+    })
+  } else if (data instanceof Object) {
+    messages.push(data)
   }
   return messages
 }

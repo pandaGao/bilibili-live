@@ -1,4 +1,4 @@
-let Live = require('../index.js')
+let Live = require('../dist/bilibili-live.js').default
 
 Live.initRoom({
   roomId: 308438

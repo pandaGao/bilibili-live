@@ -13,53 +13,51 @@ const DMPORT = 788
 const RECONNECT_DELAY = 3000
 const HEARTBEAT_DELAY = 30000
 const GIFT_END_DELAY = 3000
+const FETCH_FANS_DELAY = 5000
 
 class RoomService extends EventEmitter {
   constructor (config = {}) {
     super()
+    // 真实房间号
     this.roomId = config.roomId
+    // URL中的房间号(可能为短位ID)
     this.roomURL = config.roomId
-    this.roomRnd = config.roomRnd || ''
+    // 房间标题
     this.roomTitle = ''
+    // 播主信息
     this.roomAnchor = {}
+    // 用户id
     this.userId = config.userId || this.randUid()
+    // 弹幕服务器
     this.targetServer = config.server || DMSERVER
     this.targetPort = config.port || DMPORT
+    // SOCKET连接
     this.socket = null
-    this.heartbeatTimer = null
-    this.giftEventQueue = []
-    this.fansService = false
-    this.latestFansList = []
+    // 录制进程
     this.recordProcess = null
     this.forceEnd = false
-  }
+    // 定时事件
+    this.heartbeatService = null
+    this.fansService = null
+    this.reconnectService = null
 
-  getRoomId () {
-    return this.roomId
-  }
+    this.giftEventQueue = []
+    this.latestFansList = []
 
-  getRoomRnd () {
-    return this.roomRnd
   }
 
   getRoomInfo () {
     return {
       id: this.roomId,
       url: this.roomURL,
-      rnd: this.roomRnd,
       title: this.roomTitle,
       anchor: this.roomAnchor
     }
   }
 
-  getRoomLivePlaylist () {
-    return Util.getRoomLivePlaylist(this.roomId)
-  }
-
   init () {
     return Util.getRoomId(this.roomURL).then(room => {
       this.roomId = room.id
-      this.roomRnd = room.rnd
       return Util.getRoomInfo(this.roomId)
     }).then(room => {
       this.roomTitle = room.title
@@ -71,24 +69,28 @@ class RoomService extends EventEmitter {
 
   connect () {
     this.socket = net.connect(this.targetPort, this.targetServer)
-    if (!this.fansService) {
-      this.fetchFans()
-      this.fansService = true
-    }
     this.handleEvents()
+    this.fetchFans()
+  }
+
+  disconnect () {
+    clearTimeout(this.reconnectService)
+    clearTimeout(this.heartbeatService)
+    clearTimeout(this.fansService)
+    this.socket.destroy()
   }
 
   reconnect () {
-    this.clearHeartbeat()
-    setTimeout(() => {
+    this.disconnect()
+    this.reconnectService = setTimeout(() => {
       this.connect()
     }, RECONNECT_DELAY)
   }
 
   handleEvents () {
     this.socket.on('connect', (msg) => {
-      this.joinRoom()
-      this.setHeartbeat()
+      this.sendJoinRoom()
+      this.sendHeartbeat()
       this.emit('connected', msg)
     })
 
@@ -109,26 +111,18 @@ class RoomService extends EventEmitter {
   }
 
   randUid () {
-    return 1e14 + Math.ceil(2e14 * Math.random())
+    return 1E15 + Math.floor(2E15 * Math.random())
   }
 
-  joinRoom () {
+  sendJoinRoom () {
     this.socket.write(DMEncoder.encodeJoinRoom(this.roomId, this.userId))
-  }
-
-  setHeartbeat () {
-    this.heartbeatTimer = setInterval(() => {
-      this.sendHeartbeat()
-    }, HEARTBEAT_DELAY)
-  }
-
-  clearHeartbeat () {
-    clearInterval(this.heartbeatTimer)
-    this.heartbeatTimer = null
   }
 
   sendHeartbeat () {
     this.socket.write(DMEncoder.encodeHeartbeat())
+    this.heartbeatService = setTimeout(() => {
+      this.sendHeartbeat()
+    }, HEARTBEAT_DELAY)
   }
 
   fetchFans () {
@@ -147,20 +141,21 @@ class RoomService extends EventEmitter {
         }, [])
       }
       this.latestFansList = res.fans
-      setTimeout(() => {
+      this.fansService = setTimeout(() => {
         this.fetchFans()
-      }, 3000)
+      }, FETCH_FANS_DELAY)
       let msg = {
         type: 'fans',
+        ts: new Date().getTime(),
         total: res.total,
         newFans: newFans
       }
       this.emit('data', msg)
       this.emit('fans', msg)
     }).catch(res => {
-      setTimeout(() => {
+      this.fansService = setTimeout(() => {
         this.fetchFans()
-      }, 3000)
+      }, FETCH_FANS_DELAY)
     })
   }
 
@@ -190,12 +185,16 @@ class RoomService extends EventEmitter {
   }
 
   shiftGiftQueue (msg) {
-    this.giftEventQueue.some((m, idx) => {
+    let idx = -1
+    let findEvent = this.giftEventQueue.some((m, i) => {
       if (m.msg.user.id === msg.user.id && m.msg.gift.id === msg.gift.id) {
-        this.giftEventQueue.splice(idx, 1)
+        idx = i
         return true
       }
     })
+    if (findEvent) {
+      this.giftEventQueue.splice(idx, 1)
+    }
   }
 
   startRecordLiveStream (filePath = '', fileName = `Room${this.roomURL}_${new Date().toJSON()}`) {

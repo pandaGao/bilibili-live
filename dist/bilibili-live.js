@@ -64,7 +64,7 @@ module.exports =
 /******/ 	__webpack_require__.p = "";
 
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 17);
+/******/ 	return __webpack_require__(__webpack_require__.s = 18);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -84,17 +84,77 @@ module.exports = __webpack_amd_options__;
 
 
 Object.defineProperty(exports, "__esModule", {
-  value: true
+    value: true
 });
+var WS_OP_HEARTBEAT = 2;
+var WS_OP_HEARTBEAT_REPLY = 3;
+var WS_OP_MESSAGE = 5;
+var WS_OP_USER_AUTHENTICATION = 7;
+var WS_OP_CONNECT_SUCCESS = 8;
+var GIFT_SYS_GIFT = 0;
+var GIFT_SYS_LUCKY_MONEY = 1;
+var GIFT_SYS_TV = 2;
+var GIFT_SYS_ANNOUNCEMENT = 3;
+var GIFT_SYS_GUARD = 4;
+var GIFT_SYS_ACTIVITY_RED_PACKET = 6;
+var WS_PACKAGE_OFFSET = 0;
+var WS_HEADER_OFFSET = 4;
+var WS_VERSION_OFFSET = 6;
+var WS_OPERATION_OFFSET = 8;
+var WS_SEQUENCE_OFFSET = 12;
+var WS_PACKAGE_HEADER_TOTAL_LENGTH = 16;
+var WS_HEADER_DEFAULT_VERSION = 1;
+var WS_HEADER_DEFAULT_OPERATION = 1;
+var WS_HEADER_DEFAULT_SEQUENCE = 1;
+
 exports.default = {
-  version: 1,
-  magic: 16,
-  magicParam: 1,
-  headerLength: 16,
-  actions: {
-    heartbeat: 2,
-    joinChannel: 7
-  }
+    version: 1,
+    magic: 16,
+    magicParam: 1,
+    headerLength: 16,
+    actions: {
+        heartbeat: 2,
+        joinChannel: 7
+    },
+    WS_OP_HEARTBEAT: WS_OP_HEARTBEAT,
+    WS_OP_HEARTBEAT_REPLY: WS_OP_HEARTBEAT_REPLY,
+    WS_OP_MESSAGE: WS_OP_MESSAGE,
+    WS_OP_USER_AUTHENTICATION: WS_OP_USER_AUTHENTICATION,
+    WS_OP_CONNECT_SUCCESS: WS_OP_CONNECT_SUCCESS,
+    WS_PACKAGE_OFFSET: WS_PACKAGE_OFFSET,
+    WS_HEADER_OFFSET: WS_HEADER_OFFSET,
+    WS_VERSION_OFFSET: WS_VERSION_OFFSET,
+    WS_OPERATION_OFFSET: WS_OPERATION_OFFSET,
+    WS_SEQUENCE_OFFSET: WS_SEQUENCE_OFFSET,
+    WS_PACKAGE_HEADER_TOTAL_LENGTH: WS_PACKAGE_HEADER_TOTAL_LENGTH,
+    WS_HEADER_DEFAULT_VERSION: WS_HEADER_DEFAULT_VERSION,
+    WS_HEADER_DEFAULT_OPERATION: WS_HEADER_DEFAULT_OPERATION,
+    WS_HEADER_DEFAULT_SEQUENCE: WS_HEADER_DEFAULT_SEQUENCE,
+    dataStruct: [{
+        name: "Header Length",
+        key: "headerLen",
+        bytes: 2,
+        offset: WS_HEADER_OFFSET,
+        value: WS_PACKAGE_HEADER_TOTAL_LENGTH
+    }, {
+        name: "Protocol Version",
+        key: "ver",
+        bytes: 2,
+        offset: WS_VERSION_OFFSET,
+        value: WS_HEADER_DEFAULT_VERSION
+    }, {
+        name: "Operation",
+        key: "op",
+        bytes: 4,
+        offset: WS_OPERATION_OFFSET,
+        value: WS_HEADER_DEFAULT_OPERATION
+    }, {
+        name: "Sequence Id",
+        key: "seq",
+        bytes: 4,
+        offset: WS_SEQUENCE_OFFSET,
+        value: WS_HEADER_DEFAULT_SEQUENCE
+    }]
 };
 
 /***/ }),
@@ -299,6 +359,7 @@ var DMPORT = 788;
 var RECONNECT_DELAY = 3000;
 var HEARTBEAT_DELAY = 30000;
 var GIFT_END_DELAY = 3000;
+var FETCH_FANS_DELAY = 5000;
 
 var RoomService = function (_EventEmitter) {
   _inherits(RoomService, _EventEmitter);
@@ -308,51 +369,46 @@ var RoomService = function (_EventEmitter) {
 
     _classCallCheck(this, RoomService);
 
+    // 真实房间号
     var _this = _possibleConstructorReturn(this, (RoomService.__proto__ || Object.getPrototypeOf(RoomService)).call(this));
 
     _this.roomId = config.roomId;
+    // URL中的房间号(可能为短位ID)
     _this.roomURL = config.roomId;
-    _this.roomRnd = config.roomRnd || '';
+    // 房间标题
     _this.roomTitle = '';
+    // 播主信息
     _this.roomAnchor = {};
+    // 用户id
     _this.userId = config.userId || _this.randUid();
+    // 弹幕服务器
     _this.targetServer = config.server || DMSERVER;
     _this.targetPort = config.port || DMPORT;
+    // SOCKET连接
     _this.socket = null;
-    _this.heartbeatTimer = null;
-    _this.giftEventQueue = [];
-    _this.fansService = false;
-    _this.latestFansList = [];
+    // 录制进程
     _this.recordProcess = null;
     _this.forceEnd = false;
+    // 定时事件
+    _this.heartbeatService = null;
+    _this.fansService = null;
+    _this.reconnectService = null;
+
+    _this.giftEventQueue = [];
+    _this.latestFansList = [];
+
     return _this;
   }
 
   _createClass(RoomService, [{
-    key: 'getRoomId',
-    value: function getRoomId() {
-      return this.roomId;
-    }
-  }, {
-    key: 'getRoomRnd',
-    value: function getRoomRnd() {
-      return this.roomRnd;
-    }
-  }, {
     key: 'getRoomInfo',
     value: function getRoomInfo() {
       return {
         id: this.roomId,
         url: this.roomURL,
-        rnd: this.roomRnd,
         title: this.roomTitle,
         anchor: this.roomAnchor
       };
-    }
-  }, {
-    key: 'getRoomLivePlaylist',
-    value: function getRoomLivePlaylist() {
-      return _util2.default.getRoomLivePlaylist(this.roomId);
     }
   }, {
     key: 'init',
@@ -361,7 +417,6 @@ var RoomService = function (_EventEmitter) {
 
       return _util2.default.getRoomId(this.roomURL).then(function (room) {
         _this2.roomId = room.id;
-        _this2.roomRnd = room.rnd;
         return _util2.default.getRoomInfo(_this2.roomId);
       }).then(function (room) {
         _this2.roomTitle = room.title;
@@ -374,19 +429,24 @@ var RoomService = function (_EventEmitter) {
     key: 'connect',
     value: function connect() {
       this.socket = _net2.default.connect(this.targetPort, this.targetServer);
-      if (!this.fansService) {
-        this.fetchFans();
-        this.fansService = true;
-      }
       this.handleEvents();
+      this.fetchFans();
+    }
+  }, {
+    key: 'disconnect',
+    value: function disconnect() {
+      clearTimeout(this.reconnectService);
+      clearTimeout(this.heartbeatService);
+      clearTimeout(this.fansService);
+      this.socket.destroy();
     }
   }, {
     key: 'reconnect',
     value: function reconnect() {
       var _this3 = this;
 
-      this.clearHeartbeat();
-      setTimeout(function () {
+      this.disconnect();
+      this.reconnectService = setTimeout(function () {
         _this3.connect();
       }, RECONNECT_DELAY);
     }
@@ -396,8 +456,8 @@ var RoomService = function (_EventEmitter) {
       var _this4 = this;
 
       this.socket.on('connect', function (msg) {
-        _this4.joinRoom();
-        _this4.setHeartbeat();
+        _this4.sendJoinRoom();
+        _this4.sendHeartbeat();
         _this4.emit('connected', msg);
       });
 
@@ -419,32 +479,22 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'randUid',
     value: function randUid() {
-      return 1e14 + Math.ceil(2e14 * Math.random());
+      return 1E15 + Math.floor(2E15 * Math.random());
     }
   }, {
-    key: 'joinRoom',
-    value: function joinRoom() {
+    key: 'sendJoinRoom',
+    value: function sendJoinRoom() {
       this.socket.write(_encoder2.default.encodeJoinRoom(this.roomId, this.userId));
-    }
-  }, {
-    key: 'setHeartbeat',
-    value: function setHeartbeat() {
-      var _this5 = this;
-
-      this.heartbeatTimer = setInterval(function () {
-        _this5.sendHeartbeat();
-      }, HEARTBEAT_DELAY);
-    }
-  }, {
-    key: 'clearHeartbeat',
-    value: function clearHeartbeat() {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
     }
   }, {
     key: 'sendHeartbeat',
     value: function sendHeartbeat() {
+      var _this5 = this;
+
       this.socket.write(_encoder2.default.encodeHeartbeat());
+      this.heartbeatService = setTimeout(function () {
+        _this5.sendHeartbeat();
+      }, HEARTBEAT_DELAY);
     }
   }, {
     key: 'fetchFans',
@@ -466,20 +516,21 @@ var RoomService = function (_EventEmitter) {
           }, []);
         }
         _this6.latestFansList = res.fans;
-        setTimeout(function () {
+        _this6.fansService = setTimeout(function () {
           _this6.fetchFans();
-        }, 3000);
+        }, FETCH_FANS_DELAY);
         var msg = {
           type: 'fans',
+          ts: new Date().getTime(),
           total: res.total,
           newFans: newFans
         };
         _this6.emit('data', msg);
         _this6.emit('fans', msg);
       }).catch(function (res) {
-        setTimeout(function () {
+        _this6.fansService = setTimeout(function () {
           _this6.fetchFans();
-        }, 3000);
+        }, FETCH_FANS_DELAY);
       });
     }
   }, {
@@ -513,51 +564,53 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'shiftGiftQueue',
     value: function shiftGiftQueue(msg) {
-      var _this8 = this;
-
-      this.giftEventQueue.some(function (m, idx) {
+      var idx = -1;
+      var findEvent = this.giftEventQueue.some(function (m, i) {
         if (m.msg.user.id === msg.user.id && m.msg.gift.id === msg.gift.id) {
-          _this8.giftEventQueue.splice(idx, 1);
+          idx = i;
           return true;
         }
       });
+      if (findEvent) {
+        this.giftEventQueue.splice(idx, 1);
+      }
     }
   }, {
     key: 'startRecordLiveStream',
     value: function startRecordLiveStream() {
-      var _this9 = this;
+      var _this8 = this;
 
       var filePath = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
       var fileName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'Room' + this.roomURL + '_' + new Date().toJSON();
 
       if (this.recordProcess) return;
       return _util2.default.getRoomLivePlaylist(this.roomId).then(function (playlist) {
-        _this9.recordProcess = (0, _child_process.spawn)('ffmpeg', ['-i', playlist, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', _path2.default.format({
+        _this8.recordProcess = (0, _child_process.spawn)('ffmpeg', ['-i', playlist, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', _path2.default.format({
           dir: filePath,
           name: fileName,
           ext: '.mp4'
         })]);
 
-        _this9.recordProcess.stdout.on('data', function (data) {
+        _this8.recordProcess.stdout.on('data', function (data) {
           console.log('stdout: ' + data);
         });
 
-        _this9.recordProcess.stderr.on('data', function (data) {
+        _this8.recordProcess.stderr.on('data', function (data) {
           console.log('stderr: ' + data);
         });
 
-        _this9.recordProcess.on('close', function (code) {
+        _this8.recordProcess.on('close', function (code) {
           console.log('Record process exited with code ' + code);
-          _this9.recordProcess = null;
-          if (_this9.forceEnd) {
-            _this9.forceEnd = false;
-            _this9.emit('recordEnd');
+          _this8.recordProcess = null;
+          if (_this8.forceEnd) {
+            _this8.forceEnd = false;
+            _this8.emit('recordEnd');
           } else {
-            _util2.default.getRoomInfo(_this9.roomId).then(function (room) {
+            _util2.default.getRoomInfo(_this8.roomId).then(function (room) {
               if (room.isLive) {
-                _this9.startRecordLiveStream(filePath, fileName);
+                _this8.startRecordLiveStream(filePath, fileName);
               } else {
-                _this9.emit('recordEnd');
+                _this8.emit('recordEnd');
               }
             });
           }
@@ -2923,7 +2976,7 @@ var _http = __webpack_require__(13);
 
 var _http2 = _interopRequireDefault(_http);
 
-var _url = __webpack_require__(16);
+var _url = __webpack_require__(17);
 
 var _url2 = _interopRequireDefault(_url);
 
@@ -3020,18 +3073,60 @@ var _consts = __webpack_require__(1);
 
 var _consts2 = _interopRequireDefault(_consts);
 
+var _string_decoder = __webpack_require__(16);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function getMessageType(buff) {
-  return buff.readInt32BE(8) - 1;
+var textDecoder = new _string_decoder.StringDecoder('utf8');
+
+function decodeBuffer(buff) {
+  var data = {};
+  data.packetLen = buff.readInt32BE(_consts2.default.WS_PACKAGE_OFFSET);
+  _consts2.default.dataStruct.forEach(function (struct) {
+    if (struct.bytes === 4) {
+      data[struct.key] = buff.readInt32BE(struct.offset);
+    } else if (struct.bytes === 2) {
+      data[struct.key] = buff.readInt16BE(struct.offset);
+    }
+  });
+  if (data.op && data.op === _consts2.default.WS_OP_MESSAGE) {
+    data.body = [];
+    var packetLen = data.packetLen;
+    var headerLen = 0;
+    for (var offset = _consts2.default.WS_PACKAGE_OFFSET; offset < buff.length; offset += packetLen) {
+      packetLen = buff.readInt32BE(offset);
+      headerLen = buff.readInt16BE(offset + _consts2.default.WS_HEADER_OFFSET);
+      try {
+        var body = JSON.parse(textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)));
+        data.body.push(body);
+      } catch (e) {
+        console.log("decode body error:", new Uint8Array(buff), data);
+      }
+    }
+  } else if (data.op && data.op === _consts2.default.WS_OP_HEARTBEAT_REPLY) {
+    data.body = {
+      number: buff.readInt32BE(_consts2.default.WS_PACKAGE_HEADER_TOTAL_LENGTH)
+    };
+  }
+  return data;
 }
 
-function getMessageLength(buff) {
-  return buff.readInt32BE(0);
-}
-
-function getPayload(buff) {
-  return buff.slice(_consts2.default.headerLength);
+function parseMessage(msg) {
+  switch (msg.op) {
+    case _consts2.default.WS_OP_HEARTBEAT_REPLY:
+      msg.body.type = 'online';
+      msg.body.ts = new Date().getTime();
+      return msg.body;
+    case _consts2.default.WS_OP_MESSAGE:
+      return msg.body.map(function (m) {
+        return transformMessage(m);
+      });
+    case _consts2.default.WS_OP_CONNECT_SUCCESS:
+      return {
+        type: 'connectSuccess',
+        ts: new Date().getTime()
+      };
+  }
 }
 
 function transformMessage(msg) {
@@ -3120,59 +3215,19 @@ function transformMessage(msg) {
       message = msg;
       message.type = msg.cmd;
   }
-  return message;
-}
-
-function parseMessage(buff) {
-  var message = {};
-  var type = getMessageType(buff);
-  var payload = getPayload(buff);
-  switch (type) {
-    case 2:
-      message = {
-        type: 'online',
-        number: payload.readUInt32BE()
-      };
-      break;
-    case 4:
-      try {
-        message = JSON.parse(payload);
-        message = transformMessage(message);
-        message.originalPayload = payload.toString('utf8');
-      } catch (e) {
-        message = {
-          type: 'incomplete',
-          msg: payload.toString('utf8')
-        };
-      }
-      break;
-    default:
-      message = {
-        type: 'unknownType',
-        originalType: type,
-        msg: payload.toString('utf8')
-      };
-  }
+  message.ts = new Date().getTime();
   return message;
 }
 
 function decodeData(buff) {
   var messages = [];
-  var dataBuff = buff;
-  var bufferLength = dataBuff.length;
-  var messageLength = getMessageLength(dataBuff);
-  while (bufferLength >= messageLength) {
-    try {
-      messages.push(parseMessage(dataBuff.slice(0, messageLength)));
-    } catch (e) {
-      console.log('Error Message:');
-      console.log(e);
-      break;
-    }
-    dataBuff = dataBuff.slice(messageLength);
-    bufferLength = dataBuff.length;
-    if (!bufferLength) break;
-    messageLength = getMessageLength(dataBuff);
+  var data = parseMessage(decodeBuffer(buff));
+  if (data instanceof Array) {
+    data.forEach(function (m) {
+      messages.push(m);
+    });
+  } else if (data instanceof Object) {
+    messages.push(data);
   }
   return messages;
 }
@@ -3283,10 +3338,16 @@ module.exports = require("path");
 /* 16 */
 /***/ (function(module, exports) {
 
-module.exports = require("url");
+module.exports = require("string_decoder");
 
 /***/ }),
 /* 17 */
+/***/ (function(module, exports) {
+
+module.exports = require("url");
+
+/***/ }),
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
