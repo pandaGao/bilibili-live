@@ -3100,7 +3100,7 @@ function decodeBuffer(buff) {
         var body = JSON.parse(textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)));
         data.body.push(body);
       } catch (e) {
-        console.log("decode body error:", new Uint8Array(buff), data);
+        console.log("decode body error:", textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)), data);
       }
     }
   } else if (data.op && data.op === _consts2.default.WS_OP_HEARTBEAT_REPLY) {
@@ -3221,13 +3221,17 @@ function transformMessage(msg) {
 
 function decodeData(buff) {
   var messages = [];
-  var data = parseMessage(decodeBuffer(buff));
-  if (data instanceof Array) {
-    data.forEach(function (m) {
-      messages.push(m);
-    });
-  } else if (data instanceof Object) {
-    messages.push(data);
+  try {
+    var data = parseMessage(decodeBuffer(buff));
+    if (data instanceof Array) {
+      data.forEach(function (m) {
+        messages.push(m);
+      });
+    } else if (data instanceof Object) {
+      messages.push(data);
+    }
+  } catch (e) {
+    console.log("Socket message error", buff, e);
   }
   return messages;
 }

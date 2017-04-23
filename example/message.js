@@ -2,7 +2,7 @@ let Live = require('../dist/bilibili-live.js').default
 
 console.log('获取房间信息...')
 Live.initRoom({
-  roomId: 366
+  roomId: 1011
 }).then(room => {
   console.log('房间信息获取成功...')
   handleRoomMessage(room)
