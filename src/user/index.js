@@ -20,44 +20,61 @@ const MESSAGE_SEND_DELAY = 1500
 
 class UserService {
   constructor (config = {}) {
-    this.username = config.username || ''
-    this.password = config.password || ''
     this.cookie = config.cookie || ''
     this.danmakuColor = config.danmakuColor || 'white'
     this.danmakuMode = config.danmakuMode || 'scroll'
     this.danmakuLimit = config.danmakuLimit || 20
-    this.info = {}
+    this.room = ''
+    this.userRoom = {}
+    this.userInfo = {}
     this.messageQueue = []
     this.sendingMessage = false
   }
 
   init () {
-    return Util.getUserInfo(this.cookie).then(res => {
-      this.info = res
-      return this
+    return this.checkLogin().then(login => {
+      if (login) {
+        return this.getInfo()
+      }
+      return false
+    })
+  }
+
+  checkLogin () {
+    return Util.checkUserLogin(this.cookie).then(res => {
+      return res.login
     })
   }
 
   getInfo () {
-
+    return Util.getUserLiveInfo(this.cookie).then(res => {
+      this.userInfo = res.user
+      this.userRoom = res.room
+      return this
+    })
   }
 
-  sendMessage (room, msg) {
-    let data = {
-      color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
-      mode: DANMAKU_MODE[this.danmakuMode],
-      msg: msg,
-      rnd: room.rnd,
-      roomid: room.id
-    }
+  getUserInfo () {
+    return this.userInfo
+  }
+
+  getUserRoom () {
+    return this.userRoom
+  }
+
+  setCurrentRoom (roomId) {
+    this.room = roomId
+  }
+
+  sendMessage (msg) {
     let message = ''+msg
     while (message.length) {
       this.messageQueue.push({
         color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
         mode: DANMAKU_MODE[this.danmakuMode],
         msg: message.slice(0, this.danmakuLimit),
-        rnd: room.rnd,
-        roomid: room.id
+        rnd: Math.floor(new Date().getTime()/1000),
+        roomid: this.room
       })
       message = message.slice(this.danmakuLimit)
     }
@@ -80,6 +97,59 @@ class UserService {
       this.sendingMessage = false
     }
   }
+
+  startLiving () {
+    if (!this.userRoom.id) return false
+    return Util.toggleLiveRoom(this.cookie, 1, this.userRoom.id)
+  }
+
+  getRTMP () {
+    if (!this.userRoom.id) return false
+    return Util.getLiveRoomRTMP(this.cookie, this.userRoom.id)
+  }
+
+  endLiving () {
+    if (!this.userRoom.id) return false
+    return Util.toggleLiveRoom(this.cookie, 0, this.userRoom.id)
+  }
+
+  getBlockList (page) {
+    if (!this.userRoom.id) return false
+    return Util.getRoomBlockList(this.cookie, this.userRoom.id, page)
+  }
+
+  blockUser (userId, hour) {
+    return Util.blockUser(this.cookie, {
+      roomid: this.room,
+      content: userId,
+      type: 1,
+      hour: hour
+    })
+  }
+
+  deleteBlockUser (blockId) {
+    return Util.deleteBlockUser(this.cookie, {
+      roomid: this.room,
+      id: blockId
+    })
+  }
+
+  addAdmin (userId) {
+    return Util.setAdmin(this.cookie, {
+      content: userId,
+      roomid: this.room,
+      type: 'add'
+    })
+  }
+
+  deleteAdmin (userId) {
+    return Util.setAdmin(this.cookie, {
+      content: userId,
+      roomid: this.room,
+      type: 'del'
+    })
+  }
+
 }
 
 export default UserService

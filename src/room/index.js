@@ -55,6 +55,10 @@ class RoomService extends EventEmitter {
     }
   }
 
+  getRoomAdmin () {
+    return Util.getRoomAdmin(this.roomId)
+  }
+
   init () {
     return Util.getRoomId(this.roomURL).then(room => {
       this.roomId = room.id

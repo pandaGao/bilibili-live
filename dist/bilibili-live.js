@@ -69,6 +69,331 @@ module.exports =
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _querystring = __webpack_require__(3);
+
+var _querystring2 = _interopRequireDefault(_querystring);
+
+var _request = __webpack_require__(8);
+
+var _request2 = _interopRequireDefault(_request);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+// 获取直播间真实ID
+function getRoomId(roomURL) {
+  return _request2.default.get('http://live.bilibili.com/' + roomURL).then(function (res) {
+    var room = { url: roomURL };
+    var data = res;
+    var reg = data.match(/ROOMID \= (.*?)\;/);
+    if (reg && reg.length >= 2) room.id = reg[1];else room.id = roomURL;
+    reg = data.match(/DANMU_RND \= (.*?)\;/);
+    if (reg && reg.length >= 2) room.rnd = reg[1];else room.rnd = '';
+    return room;
+  });
+}
+
+// 直播间信息
+function getRoomInfo(roomId) {
+  return _request2.default.get('http://live.bilibili.com/live/getInfo', {
+    params: {
+      roomid: roomId
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res).data;
+    var room = {};
+    room.title = data['ROOMTITLE'];
+    room.areaId = data['AREAID'];
+    room.cover = data['COVER'];
+    room.anchor = {
+      id: data['MASTERID'],
+      name: data['ANCHOR_NICK_NAME']
+    };
+    room.fans = data['FANS_COUNT'];
+    room.isLive = !!(data['_status'] == 'on');
+    return room;
+  });
+}
+
+// 获取房间弹幕
+function getRoomMessage(roomId) {
+  return _request2.default.post('http://api.live.bilibili.com/ajax/msg', {
+    body: _querystring2.default.stringify({
+      roomid: roomId
+    }),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  });
+}
+
+// 获取直播间房管列表
+function getRoomAdmin(roomId) {
+  return _request2.default.post('http://api.live.bilibili.com/liveact/ajaxGetAdminList', {
+    body: _querystring2.default.stringify({
+      roomid: roomId
+    }),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res).data;
+    return data.map(function (admin) {
+      return {
+        id: admin.id,
+        ctime: admin.ctime,
+        admin: {
+          id: admin.userinfo.uid,
+          name: admin.userinfo.uname
+        }
+      };
+    });
+  });
+}
+
+// 获取房间被禁言用户列表
+function getRoomBlockList(cookie, roomId, page) {
+  return _request2.default.post('http://api.live.bilibili.com/liveact/ajaxGetBlockList', {
+    body: _querystring2.default.stringify({
+      roomid: roomId,
+      page: page
+    }),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res).data;
+    return data.map(function (item) {
+      return {
+        id: item.id,
+        user: {
+          id: item.uid,
+          name: item.uname
+        },
+        admin: {
+          id: item.adminid,
+          name: item.admin_uname
+        },
+        createTime: item.ctime,
+        blockEndTime: item.block_end_time
+      };
+    });
+  });
+}
+
+// 获取弹幕池地址
+function getRoomChatServer(roomId) {
+  return _request2.default.get('http://live.bilibili.com/api/player', {
+    params: {
+      id: 'cid:' + roomId
+    }
+  }).then(function (res) {
+    var data = res;
+    var reg = data.match(/<server>(.*?)<\/server>/);
+    if (reg && reg.length >= 2) return reg[1];else return 'livecmt-1.bilibili.com';
+  });
+}
+
+// 获取直播流地址
+function getRoomLivePlaylist(roomId) {
+  return _request2.default.get('http://api.live.bilibili.com/api/playurl', {
+    params: {
+      platform: 'h5',
+      cid: roomId
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res);
+    return data.data;
+  });
+}
+
+// 获取用户粉丝信息
+function getUserFans(uid, page) {
+  return _request2.default.get('http://space.bilibili.com/ajax/friend/GetFansList?mid=4548018&page=1&_=1492189208778', {
+    params: {
+      mid: uid,
+      page: page,
+      _: new Date().getTime()
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res);
+    return {
+      fans: data.data.list.map(function (fan) {
+        return {
+          id: fan.fid,
+          name: fan.uname
+        };
+      }),
+      total: data.data.results
+    };
+  });
+}
+
+// 检查cookie是否过期
+function checkUserLogin(cookie) {
+  return _request2.default.get('http://live.bilibili.com/user/getuserinfo', {
+    headers: {
+      'Cookie': cookie
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res);
+    if (data.code == 'REPONSE_OK') {
+      return {
+        login: true
+      };
+    }
+    return {
+      login: false
+    };
+  });
+}
+
+// 获取用户直播信息
+function getUserLiveInfo(cookie) {
+  return _request2.default.get('http://api.live.bilibili.com/i/api/liveinfo', {
+    headers: {
+      'Cookie': cookie
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res).data;
+    return {
+      room: {
+        id: data.roomid,
+        level: data.master.level,
+        current: data.master.current,
+        next: data.master.next,
+        san: data.san,
+        liveTime: data.liveTime
+      },
+      user: {
+        id: data.userInfo.uid,
+        name: data.userInfo.uname,
+        avatar: data.userInfo.face,
+        archives: data.achieves,
+        gold: data.userCoinIfo.gold,
+        silver: data.userCoinIfo.silver,
+        coins: data.userCoinIfo.coins,
+        bcoins: data.userCoinIfo.bili_coins,
+        vip: !!data.userCoinIfo.vip,
+        svip: !!data.userCoinIfo.svip,
+        level: data.userCoinIfo.user_level,
+        levelRank: data.userCoinIfo.user_level_rank,
+        current: data.userCoinIfo.user_intimacy,
+        next: data.userCoinIfo.user_next_intimacy
+      }
+    };
+  });
+}
+
+// 更改直播间状态
+function toggleLiveRoom(cookie, status, roomId) {
+  return _request2.default.post('http://api.live.bilibili.com/liveact/live_status_mng', {
+    body: _querystring2.default.stringify({
+      status: status,
+      roomid: roomId
+    }),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie
+    }
+  });
+}
+
+// 获取直播推流码
+function getLiveRoomRTMP(cookie, roomId) {
+  return _request2.default.post('http://api.live.bilibili.com/liveact/getrtmp', {
+    body: _querystring2.default.stringify({
+      roomid: roomId
+    }),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res);
+    if (data.code < 0) return false;
+    data = data.data;
+    return {
+      address: data.addr,
+      code: data.code
+    };
+  });
+}
+
+// 发送弹幕
+function sendMessage(cookie, data) {
+  return _request2.default.post('http://live.bilibili.com/msg/send', {
+    body: _querystring2.default.stringify(data),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie
+    }
+  });
+}
+
+// 禁言用户
+function blockUser(cookie, data) {
+  return _request2.default.post('http://api.live.bilibili.com/liveact/room_block_user', {
+    body: _querystring2.default.stringify(data),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie
+    }
+  });
+}
+
+// 取消禁言
+function deleteBlockUser(cookie, data) {
+  return _request2.default.post('http://api.live.bilibili.com/liveact/del_room_block_user', {
+    body: _querystring2.default.stringify(data),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie
+    }
+  });
+}
+
+// 管理房管
+function setAdmin(cookie, data) {
+  return _request2.default.post('http://api.live.bilibili.com/liveact/admin', {
+    body: _querystring2.default.stringify(data),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie
+    }
+  });
+}
+
+exports.default = {
+  getRoomId: getRoomId,
+  getRoomInfo: getRoomInfo,
+  getRoomMessage: getRoomMessage,
+  getRoomAdmin: getRoomAdmin,
+  getRoomBlockList: getRoomBlockList,
+  getRoomChatServer: getRoomChatServer,
+  getRoomLivePlaylist: getRoomLivePlaylist,
+  checkUserLogin: checkUserLogin,
+  getUserLiveInfo: getUserLiveInfo,
+  getUserFans: getUserFans,
+  toggleLiveRoom: toggleLiveRoom,
+  getLiveRoomRTMP: getLiveRoomRTMP,
+  sendMessage: sendMessage,
+  blockUser: blockUser,
+  deleteBlockUser: deleteBlockUser,
+  setAdmin: setAdmin
+};
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports) {
 
 /* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {/* globals __webpack_amd_options__ */
@@ -77,7 +402,7 @@ module.exports = __webpack_amd_options__;
 /* WEBPACK VAR INJECTION */}.call(exports, {}))
 
 /***/ }),
-/* 1 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -158,146 +483,6 @@ exports.default = {
 };
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _querystring = __webpack_require__(3);
-
-var _querystring2 = _interopRequireDefault(_querystring);
-
-var _request = __webpack_require__(8);
-
-var _request2 = _interopRequireDefault(_request);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function getRoomId(roomURL) {
-  return _request2.default.get('http://live.bilibili.com/' + roomURL).then(function (res) {
-    var room = { url: roomURL };
-    var data = res;
-    var reg = data.match(/ROOMID \= (.*?)\;/);
-    if (reg && reg.length >= 2) room.id = reg[1];else room.id = roomURL;
-    reg = data.match(/DANMU_RND \= (.*?)\;/);
-    if (reg && reg.length >= 2) room.rnd = reg[1];else room.rnd = '';
-    return room;
-  });
-}
-
-function getRoomInfo(roomId) {
-  return _request2.default.get('http://live.bilibili.com/live/getInfo', {
-    params: {
-      roomid: roomId
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    var room = {};
-    room.title = data.data['ROOMTITLE'];
-    room.anchor = {
-      id: data.data['MASTERID'],
-      name: data.data['ANCHOR_NICK_NAME']
-    };
-    room.fans = data.data['FANS_COUNT'];
-    room.isLive = !!(data.data['_status'] == 'on');
-    return room;
-  });
-}
-
-function getRoomMessage(roomId) {
-  return _request2.default.post('http://api.live.bilibili.com/ajax/msg', {
-    body: _querystring2.default.stringify({
-      roomid: roomId
-    }),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
-  });
-}
-
-function getRoomChatServer(roomId) {
-  return _request2.default.get('http://live.bilibili.com/api/player', {
-    params: {
-      id: 'cid:' + roomId
-    }
-  }).then(function (res) {
-    var data = res;
-    var reg = data.match(/<server>(.*?)<\/server>/);
-    if (reg && reg.length >= 2) return reg[1];else return 'livecmt-1.bilibili.com';
-  });
-}
-
-function getRoomLivePlaylist(roomId) {
-  return _request2.default.get('http://api.live.bilibili.com/api/playurl', {
-    params: {
-      platform: 'h5',
-      cid: roomId
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return data.data;
-  });
-}
-
-function getUserInfo(cookie) {
-  return _request2.default.get('http://live.bilibili.com/user/getuserinfo', {
-    headers: {
-      'Cookie': cookie
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return data;
-  });
-}
-
-function getUserFans(uid, page) {
-  return _request2.default.get('http://space.bilibili.com/ajax/friend/GetFansList?mid=4548018&page=1&_=1492189208778', {
-    params: {
-      mid: uid,
-      page: page,
-      _: new Date().getTime()
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return {
-      fans: data.data.list.map(function (fan) {
-        return {
-          id: fan.fid,
-          name: fan.uname
-        };
-      }),
-      total: data.data.results
-    };
-  });
-}
-
-function sendMessage(cookie, data) {
-  return _request2.default.post('http://live.bilibili.com/msg/send', {
-    body: _querystring2.default.stringify(data),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
-    }
-  });
-}
-
-exports.default = {
-  getRoomId: getRoomId,
-  getRoomInfo: getRoomInfo,
-  getRoomMessage: getRoomMessage,
-  getRoomChatServer: getRoomChatServer,
-  getRoomLivePlaylist: getRoomLivePlaylist,
-  getUserInfo: getUserInfo,
-  getUserFans: getUserFans,
-  sendMessage: sendMessage
-};
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports) {
 
@@ -342,7 +527,7 @@ var _encoder = __webpack_require__(10);
 
 var _encoder2 = _interopRequireDefault(_encoder);
 
-var _util = __webpack_require__(2);
+var _util = __webpack_require__(0);
 
 var _util2 = _interopRequireDefault(_util);
 
@@ -409,6 +594,11 @@ var RoomService = function (_EventEmitter) {
         title: this.roomTitle,
         anchor: this.roomAnchor
       };
+    }
+  }, {
+    key: 'getRoomAdmin',
+    value: function getRoomAdmin() {
+      return _util2.default.getRoomAdmin(this.roomId);
     }
   }, {
     key: 'init',
@@ -644,7 +834,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _util = __webpack_require__(2);
+var _util = __webpack_require__(0);
 
 var _util2 = _interopRequireDefault(_util);
 
@@ -676,13 +866,13 @@ var UserService = function () {
 
     _classCallCheck(this, UserService);
 
-    this.username = config.username || '';
-    this.password = config.password || '';
     this.cookie = config.cookie || '';
     this.danmakuColor = config.danmakuColor || 'white';
     this.danmakuMode = config.danmakuMode || 'scroll';
     this.danmakuLimit = config.danmakuLimit || 20;
-    this.info = {};
+    this.room = '';
+    this.userRoom = {};
+    this.userInfo = {};
     this.messageQueue = [];
     this.sendingMessage = false;
   }
@@ -692,32 +882,57 @@ var UserService = function () {
     value: function init() {
       var _this = this;
 
-      return _util2.default.getUserInfo(this.cookie).then(function (res) {
-        _this.info = res;
-        return _this;
+      return this.checkLogin().then(function (login) {
+        if (login) {
+          return _this.getInfo();
+        }
+        return false;
+      });
+    }
+  }, {
+    key: 'checkLogin',
+    value: function checkLogin() {
+      return _util2.default.checkUserLogin(this.cookie).then(function (res) {
+        return res.login;
       });
     }
   }, {
     key: 'getInfo',
-    value: function getInfo() {}
+    value: function getInfo() {
+      var _this2 = this;
+
+      return _util2.default.getUserLiveInfo(this.cookie).then(function (res) {
+        _this2.userInfo = res.user;
+        _this2.userRoom = res.room;
+        return _this2;
+      });
+    }
+  }, {
+    key: 'getUserInfo',
+    value: function getUserInfo() {
+      return this.userInfo;
+    }
+  }, {
+    key: 'getUserRoom',
+    value: function getUserRoom() {
+      return this.userRoom;
+    }
+  }, {
+    key: 'setCurrentRoom',
+    value: function setCurrentRoom(roomId) {
+      this.room = roomId;
+    }
   }, {
     key: 'sendMessage',
-    value: function sendMessage(room, msg) {
-      var data = {
-        color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
-        mode: DANMAKU_MODE[this.danmakuMode],
-        msg: msg,
-        rnd: room.rnd,
-        roomid: room.id
-      };
+    value: function sendMessage(msg) {
       var message = '' + msg;
       while (message.length) {
         this.messageQueue.push({
           color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
           mode: DANMAKU_MODE[this.danmakuMode],
           msg: message.slice(0, this.danmakuLimit),
-          rnd: room.rnd,
-          roomid: room.id
+          rnd: Math.floor(new Date().getTime() / 1000),
+          roomid: this.room
         });
         message = message.slice(this.danmakuLimit);
       }
@@ -728,20 +943,80 @@ var UserService = function () {
   }, {
     key: 'sendMessageFromQueue',
     value: function sendMessageFromQueue() {
-      var _this2 = this;
+      var _this3 = this;
 
       if (this.messageQueue.length) {
         this.sendingMessage = true;
         _util2.default.sendMessage(this.cookie, this.messageQueue.shift()).then(function (res) {
           setTimeout(function () {
-            _this2.sendMessageFromQueue();
+            _this3.sendMessageFromQueue();
           }, MESSAGE_SEND_DELAY);
         }, function (res) {
-          _this2.sendingMessage = false;
+          _this3.sendingMessage = false;
         });
       } else {
         this.sendingMessage = false;
       }
+    }
+  }, {
+    key: 'startLiving',
+    value: function startLiving() {
+      if (!this.userRoom.id) return false;
+      return _util2.default.toggleLiveRoom(this.cookie, 1, this.userRoom.id);
+    }
+  }, {
+    key: 'getRTMP',
+    value: function getRTMP() {
+      if (!this.userRoom.id) return false;
+      return _util2.default.getLiveRoomRTMP(this.cookie, this.userRoom.id);
+    }
+  }, {
+    key: 'endLiving',
+    value: function endLiving() {
+      if (!this.userRoom.id) return false;
+      return _util2.default.toggleLiveRoom(this.cookie, 0, this.userRoom.id);
+    }
+  }, {
+    key: 'getBlockList',
+    value: function getBlockList(page) {
+      if (!this.userRoom.id) return false;
+      return _util2.default.getRoomBlockList(this.cookie, this.userRoom.id, page);
+    }
+  }, {
+    key: 'blockUser',
+    value: function blockUser(userId, hour) {
+      return _util2.default.blockUser(this.cookie, {
+        roomid: this.room,
+        content: userId,
+        type: 1,
+        hour: hour
+      });
+    }
+  }, {
+    key: 'deleteBlockUser',
+    value: function deleteBlockUser(blockId) {
+      return _util2.default.deleteBlockUser(this.cookie, {
+        roomid: this.room,
+        id: blockId
+      });
+    }
+  }, {
+    key: 'addAdmin',
+    value: function addAdmin(userId) {
+      return _util2.default.setAdmin(this.cookie, {
+        content: userId,
+        roomid: this.room,
+        type: 'add'
+      });
+    }
+  }, {
+    key: 'deleteAdmin',
+    value: function deleteAdmin(userId) {
+      return _util2.default.setAdmin(this.cookie, {
+        content: userId,
+        roomid: this.room,
+        type: 'del'
+      });
     }
   }]);
 
@@ -2954,7 +3229,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     }, On.prototype.toJSON = On.prototype.valueOf = On.prototype.value = function () {
       return kr(this.__wrapped__, this.__actions__);
     }, On.prototype.first = On.prototype.head, Ai && (On.prototype[Ai] = tu), On;
-  }();"function" == "function" && _typeof(__webpack_require__(0)) == "object" && __webpack_require__(0) ? (Zn._ = it, !(__WEBPACK_AMD_DEFINE_RESULT__ = function () {
+  }();"function" == "function" && _typeof(__webpack_require__(1)) == "object" && __webpack_require__(1) ? (Zn._ = it, !(__WEBPACK_AMD_DEFINE_RESULT__ = function () {
     return it;
   }.call(exports, __webpack_require__, exports, module),
 				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__))) : Vn ? ((Vn.exports = it)._ = it, qn._ = it) : Zn._ = it;
@@ -3069,7 +3344,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _consts = __webpack_require__(1);
+var _consts = __webpack_require__(2);
 
 var _consts2 = _interopRequireDefault(_consts);
 
@@ -3251,7 +3526,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _consts = __webpack_require__(1);
+var _consts = __webpack_require__(2);
 
 var _consts2 = _interopRequireDefault(_consts);
 
@@ -3369,6 +3644,10 @@ var _user = __webpack_require__(5);
 
 var _user2 = _interopRequireDefault(_user);
 
+var _util = __webpack_require__(0);
+
+var _util2 = _interopRequireDefault(_util);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function initRoom(config) {
@@ -3379,10 +3658,16 @@ function initUser(config) {
   return new _user2.default(config).init();
 }
 
-exports.default = {
+var exportObject = {
   initRoom: initRoom,
-  initUser: initUser
+  initUser: initUser,
+  Util: _util2.default
 };
+
+exports.default = exportObject;
+
+
+module.exports = exportObject;
 
 /***/ })
 /******/ ]);

@@ -1,5 +1,6 @@
 import Room from './room'
 import User from './user'
+import Util from './util.js'
 
 function initRoom (config) {
   return new Room(config).init()
@@ -9,7 +10,12 @@ function initUser (config) {
   return new User(config).init()
 }
 
-export default {
+let exportObject = {
   initRoom,
-  initUser
+  initUser,
+  Util
 }
+
+export default exportObject
+
+module.exports = exportObject
