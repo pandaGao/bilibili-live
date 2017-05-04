@@ -11,7 +11,7 @@ npm install bilibili-live --save
 ## Documentation
 
 ```javascript
-var Live = require('bilibili-live').default
+var Live = require('bilibili-live')
 or
 import Live from 'bilibili-live'
 ```
