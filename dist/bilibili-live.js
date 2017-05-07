@@ -3635,6 +3635,7 @@ module.exports = require("url");
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.Util = exports.initUser = exports.initRoom = undefined;
 
 var _room = __webpack_require__(4);
 
@@ -3658,16 +3659,14 @@ function initUser(config) {
   return new _user2.default(config).init();
 }
 
-var exportObject = {
+exports.initRoom = initRoom;
+exports.initUser = initUser;
+exports.Util = _util2.default;
+exports.default = {
   initRoom: initRoom,
   initUser: initUser,
   Util: _util2.default
 };
-
-exports.default = exportObject;
-
-
-module.exports = exportObject;
 
 /***/ })
 /******/ ]);

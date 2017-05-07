@@ -10,12 +10,14 @@ function initUser (config) {
   return new User(config).init()
 }
 
-let exportObject = {
+export {
   initRoom,
   initUser,
   Util
 }
 
-export default exportObject
-
-module.exports = exportObject
+export default {
+  initRoom,
+  initUser,
+  Util
+}
