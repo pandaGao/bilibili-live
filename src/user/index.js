@@ -1,3 +1,4 @@
+import EventEmitter from 'events'
 import Util from '../util.js'
 
 const DANMAKU_COLOR = {
@@ -17,9 +18,11 @@ const DANMAKU_MODE = {
 }
 
 const MESSAGE_SEND_DELAY = 1500
+const HEARTBEAT_DELAY = 3e5
 
-class UserService {
+class UserService extends EventEmitter {
   constructor (config = {}) {
+    super()
     this.cookie = config.cookie || ''
     this.danmakuColor = config.danmakuColor || 'white'
     this.danmakuMode = config.danmakuMode || 'scroll'
@@ -29,6 +32,7 @@ class UserService {
     this.userInfo = {}
     this.messageQueue = []
     this.sendingMessage = false
+    this.onlineService = null
   }
 
   init () {
@@ -64,6 +68,38 @@ class UserService {
 
   setCurrentRoom (roomId) {
     this.room = roomId
+  }
+
+  startOnlineService () {
+    this.sendHeartbeat()
+    this.emit('heartbeat')
+    this.onlineService = setTimeout(() => {
+      this.startOnlineService()
+    }, HEARTBEAT_DELAY)
+  }
+
+  stopOnlineService () {
+    clearTimeout(this.onlineService)
+    this.onlineService = null
+  }
+
+  sendHeartbeat () {
+    return Util.sendHeartbeat(this.cookie, this.room)
+  }
+
+  joinSmallTV (roomId, tvId) {
+    return Util.joinSmallTV(this.cookie, {
+      roomId: roomId,
+      id: tvId,
+      _: new Date().getTime()
+    })
+  }
+
+  getSmallTVReward (tvId) {
+    return Util.getSmallTVReward(this.cookie, {
+      id: tvId,
+      _: new Date().getTime()
+    })
   }
 
   sendMessage (msg) {

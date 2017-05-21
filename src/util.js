@@ -140,7 +140,7 @@ function getRoomLivePlaylist (roomId) {
 
 // 获取用户粉丝信息
 function getUserFans (uid, page) {
-  return request.get('http://space.bilibili.com/ajax/friend/GetFansList?mid=4548018&page=1&_=1492189208778', {
+  return request.get('http://space.bilibili.com/ajax/friend/GetFansList', {
     params: {
       mid: uid,
       page: page,
@@ -295,6 +295,46 @@ function setAdmin (cookie, data) {
   })
 }
 
+// 发送在线心跳
+function sendHeartbeat (cookie, room) {
+  return request.post('http://api.live.bilibili.com/User/userOnlineHeart', {
+    headers: {
+      'Content-Type': 'text/html; charset=UTF-8',
+      'Cookie': cookie,
+      'Host': 'api.live.bilibili.com',
+      'Origin': 'http://live.bilibili.com',
+      'Referer': 'http://live.bilibili.com/'+room,
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    }
+  })
+}
+
+// 参与小电视抽奖
+function joinSmallTV (cookie, data) {
+  return request.get('http://api.live.bilibili.com/SmallTV/join', {
+    params: data,
+    headers: {
+      'Cookie': cookie
+    }
+  }).then(res => {
+    let data = JSON.parse(res)
+    return data
+  })
+}
+
+// 查看小电视抽奖奖励
+function getSmallTVReward (cookie, data) {
+  return request.get('http://api.live.bilibili.com/SmallTV/getReward', {
+    params: data,
+    headers: {
+      'Cookie': cookie
+    }
+  }).then(res => {
+    let data = JSON.parse(res)
+    return data
+  })
+}
+
 export default {
   getRoomId,
   getRoomInfo,
@@ -311,5 +351,8 @@ export default {
   sendMessage,
   blockUser,
   deleteBlockUser,
-  setAdmin
+  setAdmin,
+  sendHeartbeat,
+  joinSmallTV,
+  getSmallTVReward
 }

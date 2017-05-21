@@ -47,7 +47,7 @@ function parseMessage (msg) {
       })
     case Consts.WS_OP_CONNECT_SUCCESS:
       return {
-        type: 'connectSuccess',
+        type: 'connected',
         ts: new Date().getTime()
       }
   }

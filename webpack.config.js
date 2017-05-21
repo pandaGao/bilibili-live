@@ -5,6 +5,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "bilibili-live.js",
+    library: "BilibiliLive",
     libraryTarget: "commonjs2"
   },
   module: {
@@ -18,10 +19,9 @@ module.exports = {
       }
     ]
   },
-  resolve: {
-    alias: {
-      "lodash": "lodash/lodash.min.js"
-    }
-  },
+  externals: [
+    "lodash",
+    "ws"
+  ],
   target: "node"
 }

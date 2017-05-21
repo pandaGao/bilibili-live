@@ -1,78 +1,65 @@
-import net from 'net'
+import WebSocket from 'ws'
 import EventEmitter from 'events'
-import path from 'path'
-import { spawn } from 'child_process'
 
 import _ from 'lodash'
 import DMDecoder from './danmaku/decoder'
 import DMEncoder from './danmaku/encoder'
 import Util from '../util.js'
 
-const DMSERVER = 'livecmt-2.bilibili.com'
-const DMPORT = 788
+const DMPROTOCOL = 'ws'
+const DMSERVER = 'broadcastlv.chat.bilibili.com'
+const DMPORT = 2244
+const DMPATH = 'sub'
+
 const RECONNECT_DELAY = 3000
 const HEARTBEAT_DELAY = 30000
 const GIFT_END_DELAY = 3000
 const FETCH_FANS_DELAY = 5000
 
-class RoomService extends EventEmitter {
+export default class RoomService extends EventEmitter {
   constructor (config = {}) {
     super()
-    // 真实房间号
-    this.roomId = config.roomId
-    // URL中的房间号(可能为短位ID)
-    this.roomURL = config.roomId
-    // 房间标题
-    this.roomTitle = ''
-    // 播主信息
-    this.roomAnchor = {}
-    // 用户id
+    this.info = {
+      id: config.roomId,
+      url: config.roomId
+    }
     this.userId = config.userId || this.randUid()
-    // 弹幕服务器
-    this.targetServer = config.server || DMSERVER
-    this.targetPort = config.port || DMPORT
-    // SOCKET连接
     this.socket = null
-    // 录制进程
-    this.recordProcess = null
-    this.forceEnd = false
-    // 定时事件
+
     this.heartbeatService = null
     this.fansService = null
     this.reconnectService = null
 
-    this.giftEventQueue = []
-    this.latestFansList = []
-
+    this.giftMap = new Map()
+    this.fansSet = new Set()
   }
 
-  getRoomInfo () {
-    return {
-      id: this.roomId,
-      url: this.roomURL,
-      title: this.roomTitle,
-      anchor: this.roomAnchor
-    }
+  getInfo () {
+    return this.info
   }
 
-  getRoomAdmin () {
-    return Util.getRoomAdmin(this.roomId)
+  getAdmin () {
+    return Util.getRoomAdmin(this.info.id)
   }
 
   init () {
-    return Util.getRoomId(this.roomURL).then(room => {
-      this.roomId = room.id
-      return Util.getRoomInfo(this.roomId)
+    return Util.getRoomId(this.info.url).then(room => {
+      this.info.id = room.id
+      return Util.getRoomInfo(this.info.id)
     }).then(room => {
-      this.roomTitle = room.title
-      this.roomAnchor = room.anchor
+      this.info.title = room.title
+      this.info.anchor = room.anchor
       this.connect()
       return this
     })
   }
 
+  randUid () {
+    return 1E15 + Math.floor(2E15 * Math.random())
+  }
+
   connect () {
-    this.socket = net.connect(this.targetPort, this.targetServer)
+    this.socket = new WebSocket(`${DMPROTOCOL}://${DMSERVER}:${DMPORT}/${DMPATH}`)
     this.handleEvents()
     this.fetchFans()
   }
@@ -81,7 +68,7 @@ class RoomService extends EventEmitter {
     clearTimeout(this.reconnectService)
     clearTimeout(this.heartbeatService)
     clearTimeout(this.fansService)
-    this.socket.destroy()
+    this.socket.terminate()
   }
 
   reconnect () {
@@ -92,59 +79,64 @@ class RoomService extends EventEmitter {
   }
 
   handleEvents () {
-    this.socket.on('connect', (msg) => {
+    this.socket.on('open', () => {
       this.sendJoinRoom()
-      this.sendHeartbeat()
-      this.emit('connected', msg)
+      this.emit('connect')
     })
 
-    this.socket.on('data', (msg) => {
+    this.socket.on('message', (msg) => {
       DMDecoder.decodeData(msg).map(m => {
-        if (m.type === 'gift') {
-          this.pushGiftQueue(m)
+        if (m.type == 'connected') {
+          this.sendHeartbeat()
+        } else {
+          if (m.type === 'gift') {
+            this.packageGift(m)
+          }
+          this.emit('data', m)
         }
-        this.emit('data', m)
         this.emit(m.type, m)
       })
     })
 
-    this.socket.on('error', (msg) => {
-      this.emit('error', msg)
+    this.socket.on('close', (code, reason) => {
+      this.emit('close', code, reason)
+      this.reconnect()
+    })
+
+    this.socket.on('error', (err) => {
+      this.emit('error', err)
       this.reconnect()
     })
   }
 
-  randUid () {
-    return 1E15 + Math.floor(2E15 * Math.random())
-  }
-
   sendJoinRoom () {
-    this.socket.write(DMEncoder.encodeJoinRoom(this.roomId, this.userId))
+    this.socket.send(DMEncoder.encodeJoinRoom(this.info.id, this.userId))
   }
 
   sendHeartbeat () {
-    this.socket.write(DMEncoder.encodeHeartbeat())
+    this.socket.send(DMEncoder.encodeHeartbeat())
     this.heartbeatService = setTimeout(() => {
       this.sendHeartbeat()
     }, HEARTBEAT_DELAY)
   }
 
   fetchFans () {
-    Util.getUserFans(this.roomAnchor.id, 1).then(res => {
-      let hash = this.latestFansList.reduce((pre,cur) => {
-        pre[cur.id] = cur
-        return pre
-      }, {})
+    Util.getUserFans(this.info.anchor.id, 1).then(res => {
       let newFans = []
-      if (this.latestFansList.length) {
-        newFans = res.fans.reduce((pre,cur) => {
-          if (!hash[cur.id]) {
-            pre.push(cur)
+      if (this.fansSet.size) {
+        newFans = res.fans.filter((fan) => {
+          if (this.fansSet.has(fan.id)) {
+            return false
+          } else {
+            this.fansSet.add(fan.id)
+            return true
           }
-          return pre
-        }, [])
+        })
+      } else {
+        res.fans.forEach((fan) => {
+          this.fansSet.add(fan.id)
+        })
       }
-      this.latestFansList = res.fans
       this.fansService = setTimeout(() => {
         this.fetchFans()
       }, FETCH_FANS_DELAY)
@@ -163,93 +155,23 @@ class RoomService extends EventEmitter {
     })
   }
 
-  pushGiftQueue (msg) {
-    let giftEvent = null
-    let sameGiftEvent = this.giftEventQueue.some(m => {
-      if (m.msg.user.id === msg.user.id && m.msg.gift.id === msg.gift.id) {
-        giftEvent = m
-        return true
-      }
-      return false
-    })
+  packageGift (msg) {
+    let key = `${msg.user.id}.${msg.gift.id}`
+    let sameGiftEvent = this.giftMap.has(key)
     if (sameGiftEvent) {
-      giftEvent.msg.gift.count += msg.gift.count
+      let giftEvent = this.giftMap.get(key)
+      giftEvent.msg.gift.count = Number(giftEvent.msg.gift.count) + Number(msg.gift.count)
       giftEvent.event()
     } else {
-      giftEvent = {
+      let giftEvent = {
         msg: _.merge({}, msg),
         event: _.debounce(() => {
-          this.emit('giftEnd', giftEvent.msg)
-          this.shiftGiftQueue(giftEvent.msg)
+          this.emit('giftBundle', giftEvent.msg)
+          this.giftMap.delete(key)
         }, GIFT_END_DELAY)
       }
       giftEvent.event()
-      this.giftEventQueue.push(giftEvent)
+      this.giftMap.set(key, giftEvent)
     }
-  }
-
-  shiftGiftQueue (msg) {
-    let idx = -1
-    let findEvent = this.giftEventQueue.some((m, i) => {
-      if (m.msg.user.id === msg.user.id && m.msg.gift.id === msg.gift.id) {
-        idx = i
-        return true
-      }
-    })
-    if (findEvent) {
-      this.giftEventQueue.splice(idx, 1)
-    }
-  }
-
-  startRecordLiveStream (filePath = '', fileName = `Room${this.roomURL}_${new Date().toJSON()}`) {
-    if (this.recordProcess) return
-    return Util.getRoomLivePlaylist(this.roomId).then((playlist) => {
-      this.recordProcess = spawn('ffmpeg', [
-        '-i',
-        playlist,
-        '-c',
-        'copy',
-        '-bsf:a',
-        'aac_adtstoasc',
-        path.format({
-          dir: filePath,
-          name: fileName,
-          ext: '.mp4'
-        })
-      ])
-
-      this.recordProcess.stdout.on('data', (data) => {
-        console.log(`stdout: ${data}`)
-      })
-
-      this.recordProcess.stderr.on('data', (data) => {
-        console.log(`stderr: ${data}`)
-      })
-
-      this.recordProcess.on('close', (code) => {
-        console.log(`Record process exited with code ${code}`)
-        this.recordProcess = null
-        if (this.forceEnd) {
-          this.forceEnd = false
-          this.emit('recordEnd')
-        } else {
-          Util.getRoomInfo(this.roomId).then(room => {
-            if (room.isLive) {
-              this.startRecordLiveStream(filePath, fileName)
-            } else {
-              this.emit('recordEnd')
-            }
-          })
-        }
-      })
-    })
-  }
-
-  endRecordLiveStream () {
-    if (!this.recordProcess) return
-    this.forceEnd = true
-    this.recordProcess.stdin.write('q')
   }
 }
-
-export default RoomService
