@@ -58,8 +58,8 @@ Live.initRoom({
   room.on('gift', (msg) => { // 用户赠送礼物
     console.log(`感谢 ${msg.user.name} 赠送的 ${msg.gift.name} × ${msg.gift.count}`)
   })
-  room.on('giftEnd', (msg) => {
-    // giftEnd事件适合用于制作礼物答谢机
+  room.on('giftBundle', (msg) => {
+    // giftBundle事件适合用于制作礼物答谢机
     // 只在用户停止刷屏(3s内不再赠送同种礼物)后触发 可以统计刷屏礼物的总数
     console.log(`感谢 ${msg.user.name} 赠送的 ${msg.gift.name} × ${msg.gift.count}`)
   })
