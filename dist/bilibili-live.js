@@ -652,7 +652,7 @@ var RoomService = function (_EventEmitter) {
       clearTimeout(this.reconnectService);
       clearTimeout(this.heartbeatService);
       clearTimeout(this.fansService);
-      this.socket.terminate();
+      this.socket.close();
     }
   }, {
     key: 'reconnect',
@@ -690,7 +690,6 @@ var RoomService = function (_EventEmitter) {
 
       this.socket.on('close', function (code, reason) {
         _this4.emit('close', code, reason);
-        _this4.reconnect();
       });
 
       this.socket.on('error', function (err) {

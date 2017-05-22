@@ -12,4 +12,10 @@ Live.initRoom({
         console.log(msg)
       }
     })
+    .on('close', () => {
+      console.log('close')
+    })
+  setTimeout(() => {
+    room.disconnect()
+  }, 5000)
 })

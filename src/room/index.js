@@ -68,7 +68,7 @@ export default class RoomService extends EventEmitter {
     clearTimeout(this.reconnectService)
     clearTimeout(this.heartbeatService)
     clearTimeout(this.fansService)
-    this.socket.terminate()
+    this.socket.close()
   }
 
   reconnect () {
@@ -100,7 +100,6 @@ export default class RoomService extends EventEmitter {
 
     this.socket.on('close', (code, reason) => {
       this.emit('close', code, reason)
-      this.reconnect()
     })
 
     this.socket.on('error', (err) => {
