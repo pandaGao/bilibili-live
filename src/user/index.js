@@ -87,6 +87,10 @@ class UserService extends EventEmitter {
     return Util.sendHeartbeat(this.cookie, this.room)
   }
 
+  dailySign () {
+    return Util.dailySign(this.cookie)
+  }
+
   joinSmallTV (roomId, tvId) {
     return Util.joinSmallTV(this.cookie, {
       roomId: roomId,

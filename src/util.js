@@ -335,6 +335,18 @@ function getSmallTVReward (cookie, data) {
   })
 }
 
+// 每日签到
+function dailySign (cookie) {
+  return request.get('http://api.live.bilibili.com/sign/doSign', {
+    headers: {
+      'Cookie': cookie
+    }
+  }).then(res => {
+    let data = JSON.parse(res)
+    return data
+  })
+}
+
 export default {
   getRoomId,
   getRoomInfo,
@@ -354,5 +366,6 @@ export default {
   setAdmin,
   sendHeartbeat,
   joinSmallTV,
-  getSmallTVReward
+  getSmallTVReward,
+  dailySign
 }

@@ -413,6 +413,18 @@ function getSmallTVReward(cookie, data) {
   });
 }
 
+// 每日签到
+function dailySign(cookie) {
+  return _request2.default.get('http://api.live.bilibili.com/sign/doSign', {
+    headers: {
+      'Cookie': cookie
+    }
+  }).then(function (res) {
+    var data = JSON.parse(res);
+    return data;
+  });
+}
+
 exports.default = {
   getRoomId: getRoomId,
   getRoomInfo: getRoomInfo,
@@ -432,7 +444,8 @@ exports.default = {
   setAdmin: setAdmin,
   sendHeartbeat: sendHeartbeat,
   joinSmallTV: joinSmallTV,
-  getSmallTVReward: getSmallTVReward
+  getSmallTVReward: getSmallTVReward,
+  dailySign: dailySign
 };
 
 /***/ }),
@@ -919,6 +932,11 @@ var UserService = function (_EventEmitter) {
     key: 'sendHeartbeat',
     value: function sendHeartbeat() {
       return _util2.default.sendHeartbeat(this.cookie, this.room);
+    }
+  }, {
+    key: 'dailySign',
+    value: function dailySign() {
+      return _util2.default.dailySign(this.cookie);
     }
   }, {
     key: 'joinSmallTV',
