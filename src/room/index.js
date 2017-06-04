@@ -30,7 +30,7 @@ export default class RoomService extends EventEmitter {
     this.useFansService = config.useFansService === false ? false : true
     this.socket = null
     this.isTerminated = false
-    this.https = true
+    this.https = config.useHttps || false
 
     this.heartbeatService = null
     this.fansService = null

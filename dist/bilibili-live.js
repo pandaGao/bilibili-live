@@ -711,7 +711,7 @@ var RoomService = function (_EventEmitter) {
     _this.useFansService = config.useFansService === false ? false : true;
     _this.socket = null;
     _this.isTerminated = false;
-    _this.https = true;
+    _this.https = config.useHttps || false;
 
     _this.heartbeatService = null;
     _this.fansService = null;
