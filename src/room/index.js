@@ -30,7 +30,7 @@ export default class RoomService extends EventEmitter {
     this.useFansService = config.useFansService === false ? false : true
     this.socket = null
     this.isTerminated = false
-    this.useHttps = true
+    this.https = true
 
     this.heartbeatService = null
     this.fansService = null
@@ -41,9 +41,9 @@ export default class RoomService extends EventEmitter {
   }
 
   useHttps (use) {
-    if (this.useHttps !== use) {
+    if (this.https !== use) {
       this.reconnect()
-      this.useHttps = use
+      this.https = use
     }
     Util.useHttps(use)
   }
@@ -78,7 +78,7 @@ export default class RoomService extends EventEmitter {
   }
 
   connect () {
-    if (this.useHttps) {
+    if (this.https) {
       this.socket = new WebSocket(`${DMPROTOCOL}://${DMSERVER}:${DMPORT}/${DMPATH}`)
     } else {
       this.socket = new WebSocket(`${DMPROTOCOL}://${DMSERVER}:${DMPORT}/${DMPATH}`)

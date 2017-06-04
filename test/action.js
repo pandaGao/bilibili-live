@@ -3,7 +3,7 @@ const Live = require('../dist/bilibili-live.js')
 async function action() {
   try {
     let user = await Live.initUser({
-      cookie: 'sid=bhyh4e41;fts=1494528159;buvid3=16E960BA-F27F-4395-96B6-E5D9FFEA25C942883infoc;DedeUserID=1326986;DedeUserID__ckMd5=2da27d1b24d0c127;SESSDATA=74a486f7%2C1497702766%2C71339732;bili_jct=d2e886ab45d08d94e871ad16b4670ad8'
+      cookie: ''
     })
     user.on('heartbeat', () => {
       user.getInfo().then((res) => {
