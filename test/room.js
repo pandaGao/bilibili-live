@@ -15,7 +15,8 @@ Live.initRoom({
     .on('close', () => {
       console.log('close')
     })
-  // setTimeout(() => {
-  //   room.disconnect()
-  // }, 5000)
+
+  setTimeout(() => {
+    room.useHttps(false)
+  }, 5000)
 })

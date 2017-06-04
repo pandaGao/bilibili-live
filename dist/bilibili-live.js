@@ -711,7 +711,7 @@ var RoomService = function (_EventEmitter) {
     _this.useFansService = config.useFansService === false ? false : true;
     _this.socket = null;
     _this.isTerminated = false;
-    _this.useHttps = true;
+    _this.https = true;
 
     _this.heartbeatService = null;
     _this.fansService = null;
@@ -725,9 +725,9 @@ var RoomService = function (_EventEmitter) {
   _createClass(RoomService, [{
     key: 'useHttps',
     value: function useHttps(use) {
-      if (this.useHttps !== use) {
+      if (this.https !== use) {
         this.reconnect();
-        this.useHttps = use;
+        this.https = use;
       }
       _util2.default.useHttps(use);
     }
@@ -769,7 +769,7 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'connect',
     value: function connect() {
-      if (this.useHttps) {
+      if (this.https) {
         this.socket = new _ws2.default(DMPROTOCOL + '://' + DMSERVER + ':' + DMPORT + '/' + DMPATH);
       } else {
         this.socket = new _ws2.default(DMPROTOCOL + '://' + DMSERVER + ':' + DMPORT + '/' + DMPATH);
