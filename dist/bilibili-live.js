@@ -64,7 +64,7 @@ module.exports =
 /******/ 	__webpack_require__.p = "";
 
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 15);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -78,6 +78,8 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 var _querystring = __webpack_require__(3);
 
 var _querystring2 = _interopRequireDefault(_querystring);
@@ -88,365 +90,457 @@ var _request2 = _interopRequireDefault(_request);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// 获取直播间真实ID
-function getRoomId(roomURL) {
-  return _request2.default.get('http://live.bilibili.com/' + roomURL).then(function (res) {
-    var room = { url: roomURL };
-    var data = res;
-    var reg = data.match(/ROOMID \= (.*?)\;/);
-    if (reg && reg.length >= 2) room.id = reg[1];else room.id = roomURL;
-    reg = data.match(/DANMU_RND \= (.*?)\;/);
-    if (reg && reg.length >= 2) room.rnd = reg[1];else room.rnd = '';
-    return room;
-  });
-}
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-// 直播间信息
-function getRoomInfo(roomId) {
-  return _request2.default.get('http://live.bilibili.com/live/getInfo', {
-    params: {
-      roomid: roomId
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res).data;
-    var room = {};
-    room.title = data['ROOMTITLE'];
-    room.areaId = data['AREAID'];
-    room.cover = data['COVER'];
-    room.anchor = {
-      id: data['MASTERID'],
-      name: data['ANCHOR_NICK_NAME']
-    };
-    room.fans = data['FANS_COUNT'];
-    room.isLive = !!(data['_status'] == 'on');
-    return room;
-  });
-}
+var Util = function () {
+  function Util() {
+    _classCallCheck(this, Util);
 
-// 获取房间弹幕
-function getRoomMessage(roomId) {
-  return _request2.default.post('http://api.live.bilibili.com/ajax/msg', {
-    body: _querystring2.default.stringify({
-      roomid: roomId
-    }),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
-  });
-}
+    this.https = true;
+    this.protocol = 'https://';
+    this.cookie = '';
+  }
 
-// 获取直播间房管列表
-function getRoomAdmin(roomId) {
-  return _request2.default.post('http://api.live.bilibili.com/liveact/ajaxGetAdminList', {
-    body: _querystring2.default.stringify({
-      roomid: roomId
-    }),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res).data;
-    return data.map(function (admin) {
-      return {
-        id: admin.id,
-        ctime: admin.ctime,
-        admin: {
-          id: admin.userinfo.uid,
-          name: admin.userinfo.uname
-        }
-      };
-    });
-  });
-}
-
-// 获取房间被禁言用户列表
-function getRoomBlockList(cookie, roomId, page) {
-  return _request2.default.post('http://api.live.bilibili.com/liveact/ajaxGetBlockList', {
-    body: _querystring2.default.stringify({
-      roomid: roomId,
-      page: page
-    }),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res).data;
-    return data.map(function (item) {
-      return {
-        id: item.id,
-        user: {
-          id: item.uid,
-          name: item.uname
-        },
-        admin: {
-          id: item.adminid,
-          name: item.admin_uname
-        },
-        createTime: item.ctime,
-        blockEndTime: item.block_end_time
-      };
-    });
-  });
-}
-
-// 获取弹幕池地址
-function getRoomChatServer(roomId) {
-  return _request2.default.get('http://live.bilibili.com/api/player', {
-    params: {
-      id: 'cid:' + roomId
-    }
-  }).then(function (res) {
-    var data = res;
-    var reg = data.match(/<server>(.*?)<\/server>/);
-    if (reg && reg.length >= 2) return reg[1];else return 'livecmt-1.bilibili.com';
-  });
-}
-
-// 获取直播流地址
-function getRoomLivePlaylist(roomId) {
-  return _request2.default.get('http://api.live.bilibili.com/api/playurl', {
-    params: {
-      platform: 'h5',
-      cid: roomId
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return data.data;
-  });
-}
-
-// 获取用户粉丝信息
-function getUserFans(uid, page) {
-  return _request2.default.get('http://space.bilibili.com/ajax/friend/GetFansList', {
-    params: {
-      mid: uid,
-      page: page,
-      _: new Date().getTime()
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return {
-      fans: data.data.list.map(function (fan) {
-        return {
-          id: fan.fid,
-          name: fan.uname
-        };
-      }),
-      total: data.data.results
-    };
-  });
-}
-
-// 检查cookie是否过期
-function checkUserLogin(cookie) {
-  return _request2.default.get('http://live.bilibili.com/user/getuserinfo', {
-    headers: {
-      'Cookie': cookie
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    if (data.code == 'REPONSE_OK') {
-      return {
-        login: true
-      };
-    }
-    return {
-      login: false
-    };
-  });
-}
-
-// 获取用户直播信息
-function getUserLiveInfo(cookie) {
-  return _request2.default.get('http://api.live.bilibili.com/i/api/liveinfo', {
-    headers: {
-      'Cookie': cookie
-    }
-  }).then(function (res) {
-    var data = JSON.parse(res).data;
-    return {
-      room: {
-        id: data.roomid,
-        level: data.master.level,
-        current: data.master.current,
-        next: data.master.next,
-        san: data.san,
-        liveTime: data.liveTime
-      },
-      user: {
-        id: data.userInfo.uid,
-        name: data.userInfo.uname,
-        avatar: data.userInfo.face,
-        archives: data.achieves,
-        gold: data.userCoinIfo.gold,
-        silver: data.userCoinIfo.silver,
-        coins: data.userCoinIfo.coins,
-        bcoins: data.userCoinIfo.bili_coins,
-        vip: !!data.userCoinIfo.vip,
-        svip: !!data.userCoinIfo.svip,
-        level: data.userCoinIfo.user_level,
-        levelRank: data.userCoinIfo.user_level_rank,
-        current: data.userCoinIfo.user_intimacy,
-        next: data.userCoinIfo.user_next_intimacy
+  _createClass(Util, [{
+    key: 'useHttps',
+    value: function useHttps(use) {
+      if (use) {
+        this.https = true;
+        this.protocol = 'https://';
+      } else {
+        this.https = false;
+        this.protocol = 'http://';
       }
-    };
-  });
-}
-
-// 更改直播间状态
-function toggleLiveRoom(cookie, status, roomId) {
-  return _request2.default.post('http://api.live.bilibili.com/liveact/live_status_mng', {
-    body: _querystring2.default.stringify({
-      status: status,
-      roomid: roomId
-    }),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
     }
-  });
-}
-
-// 获取直播推流码
-function getLiveRoomRTMP(cookie, roomId) {
-  return _request2.default.post('http://api.live.bilibili.com/liveact/getrtmp', {
-    body: _querystring2.default.stringify({
-      roomid: roomId
-    }),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
+  }, {
+    key: 'setCookie',
+    value: function setCookie(cookie) {
+      this.cookie = cookie;
     }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    if (data.code < 0) return false;
-    data = data.data;
-    return {
-      address: data.addr,
-      code: data.code
-    };
-  });
-}
 
-// 发送弹幕
-function sendMessage(cookie, data) {
-  return _request2.default.post('http://live.bilibili.com/msg/send', {
-    body: _querystring2.default.stringify(data),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
+    // 获取直播间真实ID
+
+  }, {
+    key: 'getRoomId',
+    value: function getRoomId(roomURL) {
+      return _request2.default.get(this.protocol + 'live.bilibili.com/' + roomURL).then(function (res) {
+        var room = { url: roomURL };
+        var data = res;
+        var reg = data.match(/ROOMID \= (.*?)\;/);
+        if (reg && reg.length >= 2) room.id = reg[1];else room.id = roomURL;
+        reg = data.match(/DANMU_RND \= (.*?)\;/);
+        if (reg && reg.length >= 2) room.rnd = reg[1];else room.rnd = '';
+        return room;
+      });
     }
-  });
-}
 
-// 禁言用户
-function blockUser(cookie, data) {
-  return _request2.default.post('http://api.live.bilibili.com/liveact/room_block_user', {
-    body: _querystring2.default.stringify(data),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
+    // 直播间信息
+
+  }, {
+    key: 'getRoomInfo',
+    value: function getRoomInfo(roomId) {
+      return _request2.default.get(this.protocol + 'live.bilibili.com/live/getInfo', {
+        params: {
+          roomid: roomId
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res).data;
+        var room = {};
+        room.title = data['ROOMTITLE'];
+        room.areaId = data['AREAID'];
+        room.cover = data['COVER'];
+        room.anchor = {
+          id: data['MASTERID'],
+          name: data['ANCHOR_NICK_NAME']
+        };
+        room.fans = data['FANS_COUNT'];
+        room.isLive = !!(data['_status'] == 'on');
+        return room;
+      });
     }
-  });
-}
 
-// 取消禁言
-function deleteBlockUser(cookie, data) {
-  return _request2.default.post('http://api.live.bilibili.com/liveact/del_room_block_user', {
-    body: _querystring2.default.stringify(data),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
+    // 获取直播间历史弹幕
+
+  }, {
+    key: 'getRoomMessage',
+    value: function getRoomMessage(roomId) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/ajax/msg', {
+        body: _querystring2.default.stringify({
+          roomid: roomId
+        }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
     }
-  });
-}
 
-// 管理房管
-function setAdmin(cookie, data) {
-  return _request2.default.post('http://api.live.bilibili.com/liveact/admin', {
-    body: _querystring2.default.stringify(data),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': cookie
+    // 获取直播间房管列表
+
+  }, {
+    key: 'getRoomAdmin',
+    value: function getRoomAdmin(roomId) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/liveact/ajaxGetAdminList', {
+        body: _querystring2.default.stringify({
+          roomid: roomId
+        }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res).data;
+        return data.map(function (admin) {
+          return {
+            id: admin.id,
+            ctime: admin.ctime,
+            admin: {
+              id: admin.userinfo.uid,
+              name: admin.userinfo.uname
+            }
+          };
+        });
+      });
     }
-  });
-}
 
-// 发送在线心跳
-function sendHeartbeat(cookie, room) {
-  return _request2.default.post('http://api.live.bilibili.com/User/userOnlineHeart', {
-    headers: {
-      'Content-Type': 'text/html; charset=UTF-8',
-      'Cookie': cookie,
-      'Host': 'api.live.bilibili.com',
-      'Origin': 'http://live.bilibili.com',
-      'Referer': 'http://live.bilibili.com/' + room,
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    // 获取直播间被禁言用户列表
+
+  }, {
+    key: 'getRoomBlockList',
+    value: function getRoomBlockList(roomId, page) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/liveact/ajaxGetBlockList', {
+        body: _querystring2.default.stringify({
+          roomid: roomId,
+          page: page
+        }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookie
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res).data;
+        return data.map(function (item) {
+          return {
+            id: item.id,
+            user: {
+              id: item.uid,
+              name: item.uname
+            },
+            admin: {
+              id: item.adminid,
+              name: item.admin_uname
+            },
+            createTime: item.ctime,
+            blockEndTime: item.block_end_time
+          };
+        });
+      });
     }
-  });
-}
 
-// 参与小电视抽奖
-function joinSmallTV(cookie, data) {
-  return _request2.default.get('http://api.live.bilibili.com/SmallTV/join', {
-    params: data,
-    headers: {
-      'Cookie': cookie
+    // 获取直播间弹幕池地址
+
+  }, {
+    key: 'getRoomChatServer',
+    value: function getRoomChatServer(roomId) {
+      return _request2.default.get(this.protocol + 'live.bilibili.com/api/player', {
+        params: {
+          id: 'cid:' + roomId
+        }
+      }).then(function (res) {
+        var data = res;
+        var reg = data.match(/<server>(.*?)<\/server>/);
+        if (reg && reg.length >= 2) return reg[1];else return 'livecmt-1.bilibili.com';
+      });
     }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return data;
-  });
-}
 
-// 查看小电视抽奖奖励
-function getSmallTVReward(cookie, data) {
-  return _request2.default.get('http://api.live.bilibili.com/SmallTV/getReward', {
-    params: data,
-    headers: {
-      'Cookie': cookie
+    // 获取直播间直播流地址
+
+  }, {
+    key: 'getRoomLivePlaylist',
+    value: function getRoomLivePlaylist(roomId) {
+      return _request2.default.get(this.protocol + 'api.live.bilibili.com/api/playurl', {
+        params: {
+          platform: 'h5',
+          cid: roomId
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res);
+        return data.data;
+      });
     }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return data;
-  });
-}
 
-// 每日签到
-function dailySign(cookie) {
-  return _request2.default.get('http://api.live.bilibili.com/sign/doSign', {
-    headers: {
-      'Cookie': cookie
+    // 获取主播粉丝信息
+
+  }, {
+    key: 'getUserFans',
+    value: function getUserFans(uid, page) {
+      return _request2.default.get(this.protocol + 'space.bilibili.com/ajax/friend/GetFansList', {
+        params: {
+          mid: uid,
+          page: page,
+          _: new Date().getTime()
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res);
+        return {
+          fans: data.data.list.map(function (fan) {
+            return {
+              id: fan.fid,
+              name: fan.uname
+            };
+          }),
+          total: data.data.results
+        };
+      });
     }
-  }).then(function (res) {
-    var data = JSON.parse(res);
-    return data;
-  });
-}
 
-exports.default = {
-  getRoomId: getRoomId,
-  getRoomInfo: getRoomInfo,
-  getRoomMessage: getRoomMessage,
-  getRoomAdmin: getRoomAdmin,
-  getRoomBlockList: getRoomBlockList,
-  getRoomChatServer: getRoomChatServer,
-  getRoomLivePlaylist: getRoomLivePlaylist,
-  checkUserLogin: checkUserLogin,
-  getUserLiveInfo: getUserLiveInfo,
-  getUserFans: getUserFans,
-  toggleLiveRoom: toggleLiveRoom,
-  getLiveRoomRTMP: getLiveRoomRTMP,
-  sendMessage: sendMessage,
-  blockUser: blockUser,
-  deleteBlockUser: deleteBlockUser,
-  setAdmin: setAdmin,
-  sendHeartbeat: sendHeartbeat,
-  joinSmallTV: joinSmallTV,
-  getSmallTVReward: getSmallTVReward,
-  dailySign: dailySign
-};
+    // 检查cookie是否过期
+
+  }, {
+    key: 'checkUserLogin',
+    value: function checkUserLogin() {
+      return _request2.default.get(this.protocol + 'live.bilibili.com/user/getuserinfo', {
+        headers: {
+          'Cookie': this.cookie
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res);
+        if (data.code == 'REPONSE_OK') {
+          return {
+            login: true
+          };
+        }
+        return {
+          login: false
+        };
+      });
+    }
+
+    // 获取主播直播信息
+
+  }, {
+    key: 'getUserLiveInfo',
+    value: function getUserLiveInfo() {
+      return _request2.default.get(this.protocol + 'api.live.bilibili.com/i/api/liveinfo', {
+        headers: {
+          'Cookie': this.cookie
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res).data;
+        return {
+          room: {
+            id: data.roomid,
+            level: data.master.level,
+            current: data.master.current,
+            next: data.master.next,
+            san: data.san,
+            liveTime: data.liveTime
+          },
+          user: {
+            id: data.userInfo.uid,
+            name: data.userInfo.uname,
+            avatar: data.userInfo.face,
+            archives: data.achieves,
+            gold: data.userCoinIfo.gold,
+            silver: data.userCoinIfo.silver,
+            coins: data.userCoinIfo.coins,
+            bcoins: data.userCoinIfo.bili_coins,
+            vip: !!data.userCoinIfo.vip,
+            svip: !!data.userCoinIfo.svip,
+            level: data.userCoinIfo.user_level,
+            levelRank: data.userCoinIfo.user_level_rank,
+            current: data.userCoinIfo.user_intimacy,
+            next: data.userCoinIfo.user_next_intimacy
+          }
+        };
+      });
+    }
+
+    // 更改直播间状态
+
+  }, {
+    key: 'toggleLiveRoom',
+    value: function toggleLiveRoom(status, roomId) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/liveact/live_status_mng', {
+        body: _querystring2.default.stringify({
+          status: status,
+          roomid: roomId
+        }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookie
+        }
+      });
+    }
+
+    // 获取直播推流码
+
+  }, {
+    key: 'getLiveRoomRTMP',
+    value: function getLiveRoomRTMP(roomId) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/liveact/getrtmp', {
+        body: _querystring2.default.stringify({
+          roomid: roomId
+        }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookie
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res);
+        if (data.code < 0) return false;
+        data = data.data;
+        return {
+          address: data.addr,
+          code: data.code
+        };
+      });
+    }
+
+    // 发送弹幕
+
+  }, {
+    key: 'sendMessage',
+    value: function sendMessage(data) {
+      return _request2.default.post(this.protocol + 'live.bilibili.com/msg/send', {
+        body: _querystring2.default.stringify(data),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookie
+        }
+      });
+    }
+
+    // 禁言用户
+
+  }, {
+    key: 'blockUser',
+    value: function blockUser(data) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/liveact/room_block_user', {
+        body: _querystring2.default.stringify(data),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookie
+        }
+      });
+    }
+
+    // 取消禁言
+
+  }, {
+    key: 'deleteBlockUser',
+    value: function deleteBlockUser(data) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/liveact/del_room_block_user', {
+        body: _querystring2.default.stringify(data),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookie
+        }
+      });
+    }
+
+    // 管理房管
+
+  }, {
+    key: 'setAdmin',
+    value: function setAdmin(data) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/liveact/admin', {
+        body: _querystring2.default.stringify(data),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookie
+        }
+      });
+    }
+
+    // 发送在线心跳
+
+  }, {
+    key: 'sendHeartbeat',
+    value: function sendHeartbeat(room) {
+      return _request2.default.post(this.protocol + 'api.live.bilibili.com/User/userOnlineHeart', {
+        headers: {
+          'Content-Type': 'text/html; charset=UTF-8',
+          'Cookie': this.cookie,
+          'Host': 'api.live.bilibili.com',
+          'Origin': 'http://live.bilibili.com',
+          'Referer': 'http://live.bilibili.com/' + room,
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        }
+      });
+    }
+
+    // 发送礼物心跳
+
+  }, {
+    key: 'sendEventHeartbeat',
+    value: function sendEventHeartbeat(room) {
+      return _request2.default.get(this.protocol + 'api.live.bilibili.com/eventRoom/heart', {
+        params: {
+          roomid: room
+        },
+        headers: {
+          'Cookie': this.cookie,
+          'Host': 'api.live.bilibili.com',
+          'Origin': 'http://live.bilibili.com',
+          'Referer': 'http://live.bilibili.com/' + room,
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        }
+      });
+    }
+
+    // 参与小电视抽奖
+
+  }, {
+    key: 'joinSmallTV',
+    value: function joinSmallTV(data) {
+      return _request2.default.get(this.protocol + 'api.live.bilibili.com/SmallTV/join', {
+        params: data,
+        headers: {
+          'Cookie': this.cookie
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res);
+        return data;
+      });
+    }
+
+    // 查看小电视抽奖奖励
+
+  }, {
+    key: 'getSmallTVReward',
+    value: function getSmallTVReward(data) {
+      return _request2.default.get(this.protocol + 'api.live.bilibili.com/SmallTV/getReward', {
+        params: data,
+        headers: {
+          'Cookie': this.cookie
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res);
+        return data;
+      });
+    }
+
+    // 每日签到
+
+  }, {
+    key: 'dailySign',
+    value: function dailySign() {
+      return _request2.default.get(this.protocol + 'api.live.bilibili.com/sign/doSign', {
+        headers: {
+          'Cookie': this.cookie
+        }
+      }).then(function (res) {
+        var data = JSON.parse(res);
+        return data;
+      });
+    }
+  }]);
+
+  return Util;
+}();
+
+var util = new Util();
+
+exports.default = util;
 
 /***/ }),
 /* 1 */
@@ -554,7 +648,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _ws = __webpack_require__(13);
+var _ws = __webpack_require__(14);
 
 var _ws2 = _interopRequireDefault(_ws);
 
@@ -562,7 +656,7 @@ var _events = __webpack_require__(2);
 
 var _events2 = _interopRequireDefault(_events);
 
-var _lodash = __webpack_require__(10);
+var _lodash = __webpack_require__(11);
 
 var _lodash2 = _interopRequireDefault(_lodash);
 
@@ -587,8 +681,10 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var DMPROTOCOL = 'ws';
+var SDMPROTOCOL = 'wss';
 var DMSERVER = 'broadcastlv.chat.bilibili.com';
 var DMPORT = 2244;
+var SDMPORT = 2245;
 var DMPATH = 'sub';
 
 var RECONNECT_DELAY = 3000;
@@ -607,11 +703,15 @@ var RoomService = function (_EventEmitter) {
     var _this = _possibleConstructorReturn(this, (RoomService.__proto__ || Object.getPrototypeOf(RoomService)).call(this));
 
     _this.info = {
-      id: config.roomId,
-      url: config.roomId
+      id: config.roomId || 23058,
+      url: config.roomId || 23058
     };
     _this.userId = config.userId || _this.randUid();
+    _this.isDireact = config.isDireact || false;
+    _this.useFansService = config.useFansService === false ? false : true;
     _this.socket = null;
+    _this.isTerminated = false;
+    _this.useHttps = true;
 
     _this.heartbeatService = null;
     _this.fansService = null;
@@ -623,6 +723,15 @@ var RoomService = function (_EventEmitter) {
   }
 
   _createClass(RoomService, [{
+    key: 'useHttps',
+    value: function useHttps(use) {
+      if (this.useHttps !== use) {
+        this.reconnect();
+        this.useHttps = use;
+      }
+      _util2.default.useHttps(use);
+    }
+  }, {
     key: 'getInfo',
     value: function getInfo() {
       return this.info;
@@ -637,15 +746,20 @@ var RoomService = function (_EventEmitter) {
     value: function init() {
       var _this2 = this;
 
-      return _util2.default.getRoomId(this.info.url).then(function (room) {
-        _this2.info.id = room.id;
-        return _util2.default.getRoomInfo(_this2.info.id);
-      }).then(function (room) {
-        _this2.info.title = room.title;
-        _this2.info.anchor = room.anchor;
-        _this2.connect();
-        return _this2;
-      });
+      if (this.isDireact) {
+        this.connect();
+        return Promise.resolve(this);
+      } else {
+        return _util2.default.getRoomId(this.info.url).then(function (room) {
+          _this2.info.id = room.id;
+          return _util2.default.getRoomInfo(_this2.info.id);
+        }).then(function (room) {
+          _this2.info.title = room.title;
+          _this2.info.anchor = room.anchor;
+          _this2.connect();
+          return _this2;
+        });
+      }
     }
   }, {
     key: 'randUid',
@@ -655,9 +769,15 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'connect',
     value: function connect() {
-      this.socket = new _ws2.default(DMPROTOCOL + '://' + DMSERVER + ':' + DMPORT + '/' + DMPATH);
+      if (this.useHttps) {
+        this.socket = new _ws2.default(DMPROTOCOL + '://' + DMSERVER + ':' + DMPORT + '/' + DMPATH);
+      } else {
+        this.socket = new _ws2.default(DMPROTOCOL + '://' + DMSERVER + ':' + DMPORT + '/' + DMPATH);
+      }
       this.handleEvents();
-      this.fetchFans();
+      if (this.useFansService) {
+        this.fetchFans();
+      }
     }
   }, {
     key: 'disconnect',
@@ -676,6 +796,12 @@ var RoomService = function (_EventEmitter) {
       this.reconnectService = setTimeout(function () {
         _this3.connect();
       }, RECONNECT_DELAY);
+    }
+  }, {
+    key: 'terminate',
+    value: function terminate() {
+      this.isTerminated = true;
+      this.disconnect();
     }
   }, {
     key: 'handleEvents',
@@ -703,11 +829,16 @@ var RoomService = function (_EventEmitter) {
 
       this.socket.on('close', function (code, reason) {
         _this4.emit('close', code, reason);
+        if (!_this4.isTerminated) {
+          _this4.reconnect();
+        }
       });
 
       this.socket.on('error', function (err) {
         _this4.emit('error', err);
-        _this4.reconnect();
+        if (!_this4.isTerminated) {
+          _this4.reconnect();
+        }
       });
     }
   }, {
@@ -854,6 +985,7 @@ var UserService = function (_EventEmitter) {
     var _this = _possibleConstructorReturn(this, (UserService.__proto__ || Object.getPrototypeOf(UserService)).call(this));
 
     _this.cookie = config.cookie || '';
+    _util2.default.setCookie(_this.cookie);
     _this.danmakuColor = config.danmakuColor || 'white';
     _this.danmakuMode = config.danmakuMode || 'scroll';
     _this.danmakuLimit = config.danmakuLimit || 20;
@@ -867,6 +999,11 @@ var UserService = function (_EventEmitter) {
   }
 
   _createClass(UserService, [{
+    key: 'useHttps',
+    value: function useHttps(use) {
+      _util2.default.useHttps(use);
+    }
+  }, {
     key: 'init',
     value: function init() {
       var _this2 = this;
@@ -881,7 +1018,7 @@ var UserService = function (_EventEmitter) {
   }, {
     key: 'checkLogin',
     value: function checkLogin() {
-      return _util2.default.checkUserLogin(this.cookie).then(function (res) {
+      return _util2.default.checkUserLogin().then(function (res) {
         return res.login;
       });
     }
@@ -890,7 +1027,7 @@ var UserService = function (_EventEmitter) {
     value: function getInfo() {
       var _this3 = this;
 
-      return _util2.default.getUserLiveInfo(this.cookie).then(function (res) {
+      return _util2.default.getUserLiveInfo().then(function (res) {
         _this3.userInfo = res.user;
         _this3.userRoom = res.room;
         return _this3;
@@ -917,6 +1054,7 @@ var UserService = function (_EventEmitter) {
       var _this4 = this;
 
       this.sendHeartbeat();
+      this.sendEventHeartbeat();
       this.emit('heartbeat');
       this.onlineService = setTimeout(function () {
         _this4.startOnlineService();
@@ -931,17 +1069,22 @@ var UserService = function (_EventEmitter) {
   }, {
     key: 'sendHeartbeat',
     value: function sendHeartbeat() {
-      return _util2.default.sendHeartbeat(this.cookie, this.room);
+      return _util2.default.sendHeartbeat(this.room);
+    }
+  }, {
+    key: 'sendEventHeartbeat',
+    value: function sendEventHeartbeat() {
+      return _util2.default.sendEventHeartbeat(this.room);
     }
   }, {
     key: 'dailySign',
     value: function dailySign() {
-      return _util2.default.dailySign(this.cookie);
+      return _util2.default.dailySign();
     }
   }, {
     key: 'joinSmallTV',
     value: function joinSmallTV(roomId, tvId) {
-      return _util2.default.joinSmallTV(this.cookie, {
+      return _util2.default.joinSmallTV({
         roomId: roomId,
         id: tvId,
         _: new Date().getTime()
@@ -950,9 +1093,17 @@ var UserService = function (_EventEmitter) {
   }, {
     key: 'getSmallTVReward',
     value: function getSmallTVReward(tvId) {
-      return _util2.default.getSmallTVReward(this.cookie, {
+      return _util2.default.getSmallTVReward({
         id: tvId,
         _: new Date().getTime()
+      });
+    }
+  }, {
+    key: 'joinLighten',
+    value: function joinLighten(roomId, lightenId) {
+      return _util2.default.joinLighten({
+        roomid: roomId,
+        lightenId: lightenId
       });
     }
   }, {
@@ -980,7 +1131,7 @@ var UserService = function (_EventEmitter) {
 
       if (this.messageQueue.length) {
         this.sendingMessage = true;
-        _util2.default.sendMessage(this.cookie, this.messageQueue.shift()).then(function (res) {
+        _util2.default.sendMessage(this.messageQueue.shift()).then(function (res) {
           setTimeout(function () {
             _this5.sendMessageFromQueue();
           }, MESSAGE_SEND_DELAY);
@@ -995,30 +1146,30 @@ var UserService = function (_EventEmitter) {
     key: 'startLiving',
     value: function startLiving() {
       if (!this.userRoom.id) return false;
-      return _util2.default.toggleLiveRoom(this.cookie, 1, this.userRoom.id);
+      return _util2.default.toggleLiveRoom(1, this.userRoom.id);
     }
   }, {
     key: 'getRTMP',
     value: function getRTMP() {
       if (!this.userRoom.id) return false;
-      return _util2.default.getLiveRoomRTMP(this.cookie, this.userRoom.id);
+      return _util2.default.getLiveRoomRTMP(this.userRoom.id);
     }
   }, {
     key: 'endLiving',
     value: function endLiving() {
       if (!this.userRoom.id) return false;
-      return _util2.default.toggleLiveRoom(this.cookie, 0, this.userRoom.id);
+      return _util2.default.toggleLiveRoom(0, this.userRoom.id);
     }
   }, {
     key: 'getBlockList',
     value: function getBlockList(page) {
       if (!this.userRoom.id) return false;
-      return _util2.default.getRoomBlockList(this.cookie, this.userRoom.id, page);
+      return _util2.default.getRoomBlockList(this.userRoom.id, page);
     }
   }, {
     key: 'blockUser',
     value: function blockUser(userId, hour) {
-      return _util2.default.blockUser(this.cookie, {
+      return _util2.default.blockUser({
         roomid: this.room,
         content: userId,
         type: 1,
@@ -1028,7 +1179,7 @@ var UserService = function (_EventEmitter) {
   }, {
     key: 'deleteBlockUser',
     value: function deleteBlockUser(blockId) {
-      return _util2.default.deleteBlockUser(this.cookie, {
+      return _util2.default.deleteBlockUser({
         roomid: this.room,
         id: blockId
       });
@@ -1036,7 +1187,7 @@ var UserService = function (_EventEmitter) {
   }, {
     key: 'addAdmin',
     value: function addAdmin(userId) {
-      return _util2.default.setAdmin(this.cookie, {
+      return _util2.default.setAdmin({
         content: userId,
         roomid: this.room,
         type: 'add'
@@ -1045,7 +1196,7 @@ var UserService = function (_EventEmitter) {
   }, {
     key: 'deleteAdmin',
     value: function deleteAdmin(userId) {
-      return _util2.default.setAdmin(this.cookie, {
+      return _util2.default.setAdmin({
         content: userId,
         roomid: this.room,
         type: 'del'
@@ -1073,7 +1224,11 @@ var _http = __webpack_require__(9);
 
 var _http2 = _interopRequireDefault(_http);
 
-var _url = __webpack_require__(12);
+var _https = __webpack_require__(10);
+
+var _https2 = _interopRequireDefault(_https);
+
+var _url = __webpack_require__(13);
 
 var _url2 = _interopRequireDefault(_url);
 
@@ -1100,7 +1255,11 @@ function get(requestUrl) {
   if (config.headers) {
     options.headers = config.headers;
   }
-  return dispatchRequest(options);
+  if (parsed.protocol == 'https:') {
+    return dispatchRequest(true, options);
+  } else {
+    return dispatchRequest(false, options);
+  }
 }
 
 function post(requestUrl) {
@@ -1118,12 +1277,20 @@ function post(requestUrl) {
       'Content-Length': Buffer.byteLength(postData)
     }, config.headers)
   };
-  return dispatchRequest(options, postData);
+  if (parsed.protocol == 'https:') {
+    return dispatchRequest(true, options, postData);
+  } else {
+    return dispatchRequest(false, options, postData);
+  }
 }
 
-function dispatchRequest(options, postData) {
+function dispatchRequest(useHttps, options, postData) {
+  var sender = _http2.default;
+  if (useHttps) {
+    sender = _https2.default;
+  }
   return new Promise(function (resolve, reject) {
-    var req = _http2.default.request(options, function (res) {
+    var req = sender.request(options, function (res) {
       var statusCode = res.statusCode;
       if (statusCode !== 200) {
         reject(new Error('Request failed with status code ' + statusCode));
@@ -1170,7 +1337,7 @@ var _consts = __webpack_require__(1);
 
 var _consts2 = _interopRequireDefault(_consts);
 
-var _string_decoder = __webpack_require__(11);
+var _string_decoder = __webpack_require__(12);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -1415,28 +1582,34 @@ module.exports = require("http");
 /* 10 */
 /***/ (function(module, exports) {
 
-module.exports = require("lodash");
+module.exports = require("https");
 
 /***/ }),
 /* 11 */
 /***/ (function(module, exports) {
 
-module.exports = require("string_decoder");
+module.exports = require("lodash");
 
 /***/ }),
 /* 12 */
 /***/ (function(module, exports) {
 
-module.exports = require("url");
+module.exports = require("string_decoder");
 
 /***/ }),
 /* 13 */
 /***/ (function(module, exports) {
 
-module.exports = require("ws");
+module.exports = require("url");
 
 /***/ }),
 /* 14 */
+/***/ (function(module, exports) {
+
+module.exports = require("ws");
+
+/***/ }),
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

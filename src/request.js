@@ -1,4 +1,5 @@
 import http from 'http'
+import https from 'https'
 import url from 'url'
 import qs from 'querystring'
 
@@ -17,7 +18,12 @@ function get (requestUrl, config = {}) {
   if (config.headers) {
     options.headers = config.headers
   }
-  return dispatchRequest(options)
+  if (parsed.protocol == 'https:') {
+    return dispatchRequest(true, options)
+  } else {
+    return dispatchRequest(false, options)
+  }
+
 }
 
 function post (requestUrl, config = {}) {
@@ -35,12 +41,20 @@ function post (requestUrl, config = {}) {
       'Content-Length': Buffer.byteLength(postData)
     }, config.headers)
   }
-  return dispatchRequest(options, postData)
+  if (parsed.protocol == 'https:') {
+    return dispatchRequest(true, options, postData)
+  } else {
+    return dispatchRequest(false, options, postData)
+  }
 }
 
-function dispatchRequest (options, postData) {
+function dispatchRequest (useHttps, options, postData) {
+  let sender = http
+  if (useHttps) {
+    sender = https
+  }
   return new Promise(function(resolve, reject) {
-    let req = http.request(options, (res) => {
+    let req = sender.request(options, (res) => {
       const statusCode = res.statusCode
       if (statusCode !== 200) {
         reject(new Error(`Request failed with status code ${statusCode}`))

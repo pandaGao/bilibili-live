@@ -1,7 +1,7 @@
 const Live = require('../dist/bilibili-live.js')
 
 Live.initRoom({
-  roomId: 92052
+  roomId: 359
 }).then(room => {
   room.getAdmin().then(res => {
     console.log(res)
@@ -15,7 +15,7 @@ Live.initRoom({
     .on('close', () => {
       console.log('close')
     })
-  setTimeout(() => {
-    room.disconnect()
-  }, 5000)
+  // setTimeout(() => {
+  //   room.disconnect()
+  // }, 5000)
 })

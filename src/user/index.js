@@ -24,6 +24,7 @@ class UserService extends EventEmitter {
   constructor (config = {}) {
     super()
     this.cookie = config.cookie || ''
+    Util.setCookie(this.cookie)
     this.danmakuColor = config.danmakuColor || 'white'
     this.danmakuMode = config.danmakuMode || 'scroll'
     this.danmakuLimit = config.danmakuLimit || 20
@@ -33,6 +34,10 @@ class UserService extends EventEmitter {
     this.messageQueue = []
     this.sendingMessage = false
     this.onlineService = null
+  }
+
+  useHttps (use) {
+    Util.useHttps(use)
   }
 
   init () {
@@ -45,13 +50,13 @@ class UserService extends EventEmitter {
   }
 
   checkLogin () {
-    return Util.checkUserLogin(this.cookie).then(res => {
+    return Util.checkUserLogin().then(res => {
       return res.login
     })
   }
 
   getInfo () {
-    return Util.getUserLiveInfo(this.cookie).then(res => {
+    return Util.getUserLiveInfo().then(res => {
       this.userInfo = res.user
       this.userRoom = res.room
       return this
@@ -72,6 +77,7 @@ class UserService extends EventEmitter {
 
   startOnlineService () {
     this.sendHeartbeat()
+    this.sendEventHeartbeat()
     this.emit('heartbeat')
     this.onlineService = setTimeout(() => {
       this.startOnlineService()
@@ -84,15 +90,19 @@ class UserService extends EventEmitter {
   }
 
   sendHeartbeat () {
-    return Util.sendHeartbeat(this.cookie, this.room)
+    return Util.sendHeartbeat(this.room)
+  }
+
+  sendEventHeartbeat () {
+    return Util.sendEventHeartbeat(this.room)
   }
 
   dailySign () {
-    return Util.dailySign(this.cookie)
+    return Util.dailySign()
   }
 
   joinSmallTV (roomId, tvId) {
-    return Util.joinSmallTV(this.cookie, {
+    return Util.joinSmallTV({
       roomId: roomId,
       id: tvId,
       _: new Date().getTime()
@@ -100,9 +110,16 @@ class UserService extends EventEmitter {
   }
 
   getSmallTVReward (tvId) {
-    return Util.getSmallTVReward(this.cookie, {
+    return Util.getSmallTVReward({
       id: tvId,
       _: new Date().getTime()
+    })
+  }
+
+  joinLighten (roomId, lightenId) {
+    return Util.joinLighten({
+      roomid: roomId,
+      lightenId: lightenId
     })
   }
 
@@ -126,7 +143,7 @@ class UserService extends EventEmitter {
   sendMessageFromQueue () {
     if (this.messageQueue.length) {
       this.sendingMessage = true
-      Util.sendMessage(this.cookie, this.messageQueue.shift()).then(res => {
+      Util.sendMessage(this.messageQueue.shift()).then(res => {
         setTimeout(() => {
           this.sendMessageFromQueue()
         }, MESSAGE_SEND_DELAY)
@@ -140,26 +157,26 @@ class UserService extends EventEmitter {
 
   startLiving () {
     if (!this.userRoom.id) return false
-    return Util.toggleLiveRoom(this.cookie, 1, this.userRoom.id)
+    return Util.toggleLiveRoom(1, this.userRoom.id)
   }
 
   getRTMP () {
     if (!this.userRoom.id) return false
-    return Util.getLiveRoomRTMP(this.cookie, this.userRoom.id)
+    return Util.getLiveRoomRTMP(this.userRoom.id)
   }
 
   endLiving () {
     if (!this.userRoom.id) return false
-    return Util.toggleLiveRoom(this.cookie, 0, this.userRoom.id)
+    return Util.toggleLiveRoom(0, this.userRoom.id)
   }
 
   getBlockList (page) {
     if (!this.userRoom.id) return false
-    return Util.getRoomBlockList(this.cookie, this.userRoom.id, page)
+    return Util.getRoomBlockList(this.userRoom.id, page)
   }
 
   blockUser (userId, hour) {
-    return Util.blockUser(this.cookie, {
+    return Util.blockUser({
       roomid: this.room,
       content: userId,
       type: 1,
@@ -168,14 +185,14 @@ class UserService extends EventEmitter {
   }
 
   deleteBlockUser (blockId) {
-    return Util.deleteBlockUser(this.cookie, {
+    return Util.deleteBlockUser({
       roomid: this.room,
       id: blockId
     })
   }
 
   addAdmin (userId) {
-    return Util.setAdmin(this.cookie, {
+    return Util.setAdmin({
       content: userId,
       roomid: this.room,
       type: 'add'
@@ -183,7 +200,7 @@ class UserService extends EventEmitter {
   }
 
   deleteAdmin (userId) {
-    return Util.setAdmin(this.cookie, {
+    return Util.setAdmin({
       content: userId,
       roomid: this.room,
       type: 'del'

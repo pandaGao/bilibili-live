@@ -7,8 +7,10 @@ import DMEncoder from './danmaku/encoder'
 import Util from '../util.js'
 
 const DMPROTOCOL = 'ws'
+const SDMPROTOCOL = 'wss'
 const DMSERVER = 'broadcastlv.chat.bilibili.com'
 const DMPORT = 2244
+const SDMPORT = 2245
 const DMPATH = 'sub'
 
 const RECONNECT_DELAY = 3000
@@ -20,11 +22,15 @@ export default class RoomService extends EventEmitter {
   constructor (config = {}) {
     super()
     this.info = {
-      id: config.roomId,
-      url: config.roomId
+      id: config.roomId || 23058,
+      url: config.roomId || 23058
     }
     this.userId = config.userId || this.randUid()
+    this.isDireact = config.isDireact || false
+    this.useFansService = config.useFansService === false ? false : true
     this.socket = null
+    this.isTerminated = false
+    this.useHttps = true
 
     this.heartbeatService = null
     this.fansService = null
@@ -32,6 +38,14 @@ export default class RoomService extends EventEmitter {
 
     this.giftMap = new Map()
     this.fansSet = new Set()
+  }
+
+  useHttps (use) {
+    if (this.useHttps !== use) {
+      this.reconnect()
+      this.useHttps = use
+    }
+    Util.useHttps(use)
   }
 
   getInfo () {
@@ -43,15 +57,20 @@ export default class RoomService extends EventEmitter {
   }
 
   init () {
-    return Util.getRoomId(this.info.url).then(room => {
-      this.info.id = room.id
-      return Util.getRoomInfo(this.info.id)
-    }).then(room => {
-      this.info.title = room.title
-      this.info.anchor = room.anchor
+    if (this.isDireact) {
       this.connect()
-      return this
-    })
+      return Promise.resolve(this)
+    } else {
+      return Util.getRoomId(this.info.url).then(room => {
+        this.info.id = room.id
+        return Util.getRoomInfo(this.info.id)
+      }).then(room => {
+        this.info.title = room.title
+        this.info.anchor = room.anchor
+        this.connect()
+        return this
+      })
+    }
   }
 
   randUid () {
@@ -59,9 +78,15 @@ export default class RoomService extends EventEmitter {
   }
 
   connect () {
-    this.socket = new WebSocket(`${DMPROTOCOL}://${DMSERVER}:${DMPORT}/${DMPATH}`)
+    if (this.useHttps) {
+      this.socket = new WebSocket(`${DMPROTOCOL}://${DMSERVER}:${DMPORT}/${DMPATH}`)
+    } else {
+      this.socket = new WebSocket(`${DMPROTOCOL}://${DMSERVER}:${DMPORT}/${DMPATH}`)
+    }
     this.handleEvents()
-    this.fetchFans()
+    if (this.useFansService) {
+      this.fetchFans()
+    }
   }
 
   disconnect () {
@@ -76,6 +101,11 @@ export default class RoomService extends EventEmitter {
     this.reconnectService = setTimeout(() => {
       this.connect()
     }, RECONNECT_DELAY)
+  }
+
+  terminate () {
+    this.isTerminated = true
+    this.disconnect()
   }
 
   handleEvents () {
@@ -100,11 +130,16 @@ export default class RoomService extends EventEmitter {
 
     this.socket.on('close', (code, reason) => {
       this.emit('close', code, reason)
+      if (!this.isTerminated) {
+        this.reconnect()
+      }
     })
 
     this.socket.on('error', (err) => {
       this.emit('error', err)
-      this.reconnect()
+      if (!this.isTerminated) {
+        this.reconnect()
+      }
     })
   }
 
