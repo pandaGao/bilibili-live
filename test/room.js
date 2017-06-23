@@ -1,22 +1,18 @@
 const Live = require('../dist/bilibili-live.js')
 
 Live.initRoom({
-  roomId: 359
+  roomId: 92052,
 }).then(room => {
-  room.getAdmin().then(res => {
-    console.log(res)
-  })
   room
     .on('data', (msg) => {
       if (msg.type != 'online' && msg.type != 'fans') {
         console.log(msg)
       }
     })
+    .on('error', () => {
+      console.log('error')
+    })
     .on('close', () => {
       console.log('close')
     })
-
-  setTimeout(() => {
-    room.useHttps(false)
-  }, 5000)
 })

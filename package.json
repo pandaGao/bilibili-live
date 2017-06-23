@@ -8,7 +8,7 @@
     "message": "node --inspect ./example/message.js",
     "record": "node --inspect ./example/record.js",
     "test:user": "node --inspect ./test/user.js",
-    "test:room": "node --inspect ./test/room.js",
+    "test:room": "node ./test/room.js",
     "test:action": "node --inspect ./test/action.js"
   },
   "author": "pandaGao <me@pandagao.com>",

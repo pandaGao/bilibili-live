@@ -86,6 +86,12 @@ function transformMessage (msg) {
       if (msg.info[4].length) {
         message.user.level = msg.info[4][0]
       }
+      if (msg.info[5].length) {
+        message.user.title = {
+          name: msg.info[5][0],
+          source: msg.info[5][1]
+        }
+      }
       break
     case 'WELCOME':
       message.type = 'welcome'

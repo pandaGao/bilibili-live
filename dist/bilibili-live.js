@@ -64,7 +64,7 @@ module.exports =
 /******/ 	__webpack_require__.p = "";
 
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 15);
+/******/ 	return __webpack_require__(__webpack_require__.s = 16);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -648,13 +648,17 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _ws = __webpack_require__(14);
+var _ws = __webpack_require__(15);
 
 var _ws2 = _interopRequireDefault(_ws);
 
 var _events = __webpack_require__(2);
 
 var _events2 = _interopRequireDefault(_events);
+
+var _net = __webpack_require__(12);
+
+var _net2 = _interopRequireDefault(_net);
 
 var _lodash = __webpack_require__(11);
 
@@ -680,14 +684,16 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var DMPROTOCOL = 'ws';
-var SDMPROTOCOL = 'wss';
-var DMSERVER = 'broadcastlv.chat.bilibili.com';
-var DMPORT = 2244;
-var SDMPORT = 2245;
-var DMPATH = 'sub';
+var DMPORT = 2243;
+var DMSERVER = 'livecmt-2.bilibili.com';
 
-var RECONNECT_DELAY = 3000;
+var WSDMPROTOCOL = 'ws';
+var WSSDMPROTOCOL = 'wss';
+var WSDMSERVER = 'broadcastlv.chat.bilibili.com';
+var WSDMPORT = 2244;
+var WSSDMPORT = 2245;
+var WSDMPATH = 'sub';
+
 var HEARTBEAT_DELAY = 30000;
 var GIFT_END_DELAY = 3000;
 var FETCH_FANS_DELAY = 5000;
@@ -703,19 +709,18 @@ var RoomService = function (_EventEmitter) {
     var _this = _possibleConstructorReturn(this, (RoomService.__proto__ || Object.getPrototypeOf(RoomService)).call(this));
 
     _this.info = {
-      id: config.roomId || 23058,
-      url: config.roomId || 23058
+      id: config.roomId + '' || '23058',
+      url: config.roomId + '' || '23058'
     };
     _this.userId = config.userId || _this.randUid();
-    _this.isDireact = config.isDireact || false;
     _this.useFansService = config.useFansService === false ? false : true;
-    _this.socket = null;
-    _this.isTerminated = false;
-    _this.https = config.useHttps || false;
+    _this.useWebsocket = config.useWebsocket === false ? false : true;
+    _this.useWSS = config.useWSS || false;
+    _util2.default.useHttps(_this.useWSS);
 
+    _this.socket = null;
     _this.heartbeatService = null;
     _this.fansService = null;
-    _this.reconnectService = null;
 
     _this.giftMap = new Map();
     _this.fansSet = new Set();
@@ -723,39 +728,36 @@ var RoomService = function (_EventEmitter) {
   }
 
   _createClass(RoomService, [{
-    key: 'useHttps',
-    value: function useHttps(use) {
-      if (this.https !== use) {
-        this.reconnect();
-        this.https = use;
-      }
-      _util2.default.useHttps(use);
-    }
-  }, {
     key: 'getInfo',
     value: function getInfo() {
       return this.info;
-    }
-  }, {
-    key: 'getAdmin',
-    value: function getAdmin() {
-      return _util2.default.getRoomAdmin(this.info.id);
     }
   }, {
     key: 'init',
     value: function init() {
       var _this2 = this;
 
-      if (this.isDireact) {
-        this.connect();
-        return Promise.resolve(this);
+      var realID = null;
+      if (this.info.url.length < 5) {
+        realID = _util2.default.getRoomId(this.info.url);
       } else {
-        return _util2.default.getRoomId(this.info.url).then(function (room) {
-          _this2.info.id = room.id;
+        realID = Promise.resolve({
+          id: this.info.id
+        });
+      }
+      if (this.useFansService) {
+        return realID.then(function (room) {
+          _this2.info.id = room.id + '';
           return _util2.default.getRoomInfo(_this2.info.id);
         }).then(function (room) {
           _this2.info.title = room.title;
           _this2.info.anchor = room.anchor;
+          _this2.connect();
+          return _this2;
+        });
+      } else {
+        return realID.then(function (room) {
+          _this2.info.id = room.id + '';
           _this2.connect();
           return _this2;
         });
@@ -769,10 +771,14 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'connect',
     value: function connect() {
-      if (this.https) {
-        this.socket = new _ws2.default(DMPROTOCOL + '://' + DMSERVER + ':' + DMPORT + '/' + DMPATH);
+      if (this.useWebsocket) {
+        if (this.useWSS) {
+          this.socket = new _ws2.default(WSSDMPROTOCOL + '://' + WSDMSERVER + ':' + WSSDMPORT + '/' + WSDMPATH);
+        } else {
+          this.socket = new _ws2.default(WSDMPROTOCOL + '://' + WSDMSERVER + ':' + WSDMPORT + '/' + WSDMPATH);
+        }
       } else {
-        this.socket = new _ws2.default(DMPROTOCOL + '://' + DMSERVER + ':' + DMPORT + '/' + DMPATH);
+        this.socket = _net2.default.connect(DMPORT, DMSERVER);
       }
       this.handleEvents();
       if (this.useFansService) {
@@ -782,103 +788,117 @@ var RoomService = function (_EventEmitter) {
   }, {
     key: 'disconnect',
     value: function disconnect() {
-      clearTimeout(this.reconnectService);
       clearTimeout(this.heartbeatService);
       clearTimeout(this.fansService);
       this.socket.close();
     }
   }, {
-    key: 'reconnect',
-    value: function reconnect() {
-      var _this3 = this;
-
-      this.disconnect();
-      this.reconnectService = setTimeout(function () {
-        _this3.connect();
-      }, RECONNECT_DELAY);
-    }
-  }, {
-    key: 'terminate',
-    value: function terminate() {
-      this.isTerminated = true;
-      this.disconnect();
-    }
-  }, {
     key: 'handleEvents',
     value: function handleEvents() {
-      var _this4 = this;
+      var _this3 = this;
 
-      this.socket.on('open', function () {
-        _this4.sendJoinRoom();
-        _this4.emit('connect');
-      });
-
-      this.socket.on('message', function (msg) {
-        _decoder2.default.decodeData(msg).map(function (m) {
-          if (m.type == 'connected') {
-            _this4.sendHeartbeat();
-          } else {
-            if (m.type === 'gift') {
-              _this4.packageGift(m);
-            }
-            _this4.emit('data', m);
-          }
-          _this4.emit(m.type, m);
+      if (this.useWebsocket) {
+        this.socket.on('open', function () {
+          _this3.sendJoinRoom();
+          _this3.emit('connect');
         });
-      });
 
-      this.socket.on('close', function (code, reason) {
-        _this4.emit('close', code, reason);
-        if (!_this4.isTerminated) {
-          _this4.reconnect();
-        }
-      });
+        this.socket.on('message', function (msg) {
+          _decoder2.default.decodeData(msg).map(function (m) {
+            if (m.type == 'connected') {
+              _this3.sendHeartbeat();
+            } else {
+              if (m.type === 'gift') {
+                _this3.packageGift(m);
+              }
+              _this3.emit('data', m);
+            }
+            _this3.emit(m.type, m);
+          });
+        });
 
-      this.socket.on('error', function (err) {
-        _this4.emit('error', err);
-        if (!_this4.isTerminated) {
-          _this4.reconnect();
-        }
-      });
+        this.socket.on('close', function () {
+          _this3.emit('close');
+        });
+
+        this.socket.on('error', function (err) {
+          _this3.emit('error', err);
+        });
+      } else {
+        this.socket.on('connect', function (msg) {
+          _this3.sendJoinRoom();
+          _this3.emit('connect');
+        });
+
+        this.socket.on('data', function (msg) {
+          _decoder2.default.decodeData(msg).map(function (m) {
+            if (m.type == 'connected') {
+              _this3.sendHeartbeat();
+            } else {
+              if (m.type === 'gift') {
+                _this3.packageGift(m);
+              }
+              _this3.emit('data', m);
+            }
+            _this3.emit(m.type, m);
+          });
+        });
+
+        this.socket.on('close', function () {
+          _this3.emit('close');
+        });
+
+        this.socket.on('error', function (err) {
+          _this3.emit('error', err);
+        });
+      }
     }
   }, {
     key: 'sendJoinRoom',
     value: function sendJoinRoom() {
-      this.socket.send(_encoder2.default.encodeJoinRoom(this.info.id, this.userId));
+      if (this.useWebsocket) {
+        this.socket.send(_encoder2.default.encodeJoinRoom(this.info.id, this.userId));
+      } else {
+        this.socket.write(_encoder2.default.encodeJoinRoom(this.info.id, this.userId));
+      }
     }
   }, {
     key: 'sendHeartbeat',
     value: function sendHeartbeat() {
-      var _this5 = this;
+      var _this4 = this;
 
-      this.socket.send(_encoder2.default.encodeHeartbeat());
+      if (this.useWebsocket) {
+        this.socket.send(_encoder2.default.encodeHeartbeat());
+      } else {
+        this.socket.write(_encoder2.default.encodeHeartbeat());
+      }
       this.heartbeatService = setTimeout(function () {
-        _this5.sendHeartbeat();
+        _this4.sendHeartbeat();
       }, HEARTBEAT_DELAY);
     }
   }, {
     key: 'fetchFans',
     value: function fetchFans() {
-      var _this6 = this;
+      var _this5 = this;
 
       _util2.default.getUserFans(this.info.anchor.id, 1).then(function (res) {
         var newFans = [];
-        if (_this6.fansSet.size) {
+        if (_this5.fansSet.size) {
           newFans = res.fans.filter(function (fan) {
-            if (_this6.fansSet.has(fan.id)) {
+            if (_this5.fansSet.has(fan.id)) {
               return false;
             } else {
-              _this6.fansSet.add(fan.id);
+              _this5.fansSet.add(fan.id);
               return true;
             }
           });
         } else {
           res.fans.forEach(function (fan) {
-            _this6.fansSet.add(fan.id);
+            _this5.fansSet.add(fan.id);
           });
         }
-        _this6.fansService = setTimeout(function () {
-          _this6.fetchFans();
+        _this5.fansService = setTimeout(function () {
+          _this5.fetchFans();
         }, FETCH_FANS_DELAY);
         var msg = {
           type: 'fans',
@@ -886,18 +906,18 @@ var RoomService = function (_EventEmitter) {
           total: res.total,
           newFans: newFans
         };
-        _this6.emit('data', msg);
-        _this6.emit('fans', msg);
+        _this5.emit('data', msg);
+        _this5.emit('fans', msg);
       }).catch(function (res) {
-        _this6.fansService = setTimeout(function () {
-          _this6.fetchFans();
+        _this5.fansService = setTimeout(function () {
+          _this5.fetchFans();
         }, FETCH_FANS_DELAY);
       });
     }
   }, {
     key: 'packageGift',
     value: function packageGift(msg) {
-      var _this7 = this;
+      var _this6 = this;
 
       var key = msg.user.id + '.' + msg.gift.id;
       var sameGiftEvent = this.giftMap.has(key);
@@ -910,12 +930,12 @@ var RoomService = function (_EventEmitter) {
           var giftEvent = {
             msg: _lodash2.default.merge({}, msg),
             event: _lodash2.default.debounce(function () {
-              _this7.emit('giftBundle', giftEvent.msg);
-              _this7.giftMap.delete(key);
+              _this6.emit('giftBundle', giftEvent.msg);
+              _this6.giftMap.delete(key);
             }, GIFT_END_DELAY)
           };
           giftEvent.event();
-          _this7.giftMap.set(key, giftEvent);
+          _this6.giftMap.set(key, giftEvent);
         })();
       }
     }
@@ -1228,7 +1248,7 @@ var _https = __webpack_require__(10);
 
 var _https2 = _interopRequireDefault(_https);
 
-var _url = __webpack_require__(13);
+var _url = __webpack_require__(14);
 
 var _url2 = _interopRequireDefault(_url);
 
@@ -1337,7 +1357,7 @@ var _consts = __webpack_require__(1);
 
 var _consts2 = _interopRequireDefault(_consts);
 
-var _string_decoder = __webpack_require__(12);
+var _string_decoder = __webpack_require__(13);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -1425,6 +1445,12 @@ function transformMessage(msg) {
       }
       if (msg.info[4].length) {
         message.user.level = msg.info[4][0];
+      }
+      if (msg.info[5].length) {
+        message.user.title = {
+          name: msg.info[5][0],
+          source: msg.info[5][1]
+        };
       }
       break;
     case 'WELCOME':
@@ -1594,22 +1620,28 @@ module.exports = require("lodash");
 /* 12 */
 /***/ (function(module, exports) {
 
-module.exports = require("string_decoder");
+module.exports = require("net");
 
 /***/ }),
 /* 13 */
 /***/ (function(module, exports) {
 
-module.exports = require("url");
+module.exports = require("string_decoder");
 
 /***/ }),
 /* 14 */
 /***/ (function(module, exports) {
 
-module.exports = require("ws");
+module.exports = require("url");
 
 /***/ }),
 /* 15 */
+/***/ (function(module, exports) {
+
+module.exports = require("ws");
+
+/***/ }),
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
