@@ -9,11 +9,13 @@ const DANMAKU_COLOR = {
   'cyan': 0x00fffc,
   'green': 0x7eff00,
   'yellow': 0xffed4f,
-  'orange': 0xff9800
+  'orange': 0xff9800,
+  'pink': 0xff739a
 }
 
 const DANMAKU_MODE = {
   'scroll': 1,
+  'bottom': 4,
   'top': 5
 }
 
@@ -38,6 +40,12 @@ class UserService extends EventEmitter {
 
   useHttps (use) {
     Util.useHttps(use)
+  }
+
+  setDanmakuConfig (config) {
+    this.danmakuMode = config.danmakuMode || this.danmakuMode
+    this.danmakuColor = config.danmakuColor || this.danmakuColor
+    this.danmakuLimit = config.danmakuLimit || this.danmakuLimit
   }
 
   init () {
@@ -123,7 +131,18 @@ class UserService extends EventEmitter {
     })
   }
 
-  sendMessage (msg) {
+  sendMessage () {
+    let message = ''+msg
+    return Util.sendMessage({
+      color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
+      mode: DANMAKU_MODE[this.danmakuMode],
+      msg: message,
+      rnd: Math.floor(new Date().getTime()/1000),
+      roomid: this.room
+    })
+  }
+
+  asyncSendMessage (msg) {
     let message = ''+msg
     while (message.length) {
       this.messageQueue.push({

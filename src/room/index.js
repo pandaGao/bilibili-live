@@ -98,7 +98,11 @@ export default class RoomService extends EventEmitter {
   disconnect () {
     clearTimeout(this.heartbeatService)
     clearTimeout(this.fansService)
-    this.socket.close()
+    if (this.useWebsocket) {
+      this.socket.close()
+    } else {
+      this.socket.end()
+    }
   }
 
   handleEvents () {

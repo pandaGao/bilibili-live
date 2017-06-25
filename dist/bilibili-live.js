@@ -790,7 +790,11 @@ var RoomService = function (_EventEmitter) {
     value: function disconnect() {
       clearTimeout(this.heartbeatService);
       clearTimeout(this.fansService);
-      this.socket.close();
+      if (this.useWebsocket) {
+        this.socket.close();
+      } else {
+        this.socket.end();
+      }
     }
   }, {
     key: 'handleEvents',
@@ -983,11 +987,13 @@ var DANMAKU_COLOR = {
   'cyan': 0x00fffc,
   'green': 0x7eff00,
   'yellow': 0xffed4f,
-  'orange': 0xff9800
+  'orange': 0xff9800,
+  'pink': 0xff739a
 };
 
 var DANMAKU_MODE = {
   'scroll': 1,
+  'bottom': 4,
   'top': 5
 };
 
@@ -1022,6 +1028,13 @@ var UserService = function (_EventEmitter) {
     key: 'useHttps',
     value: function useHttps(use) {
       _util2.default.useHttps(use);
+    }
+  }, {
+    key: 'setDanmakuConfig',
+    value: function setDanmakuConfig(config) {
+      this.danmakuMode = config.danmakuMode || this.danmakuMode;
+      this.danmakuColor = config.danmakuColor || this.danmakuColor;
+      this.danmakuLimit = config.danmakuLimit || this.danmakuLimit;
     }
   }, {
     key: 'init',
@@ -1128,7 +1141,19 @@ var UserService = function (_EventEmitter) {
     }
   }, {
     key: 'sendMessage',
-    value: function sendMessage(msg) {
+    value: function sendMessage() {
+      var message = '' + msg;
+      return _util2.default.sendMessage({
+        color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
+        mode: DANMAKU_MODE[this.danmakuMode],
+        msg: message,
+        rnd: Math.floor(new Date().getTime() / 1000),
+        roomid: this.room
+      });
+    }
+  }, {
+    key: 'asyncSendMessage',
+    value: function asyncSendMessage(msg) {
       var message = '' + msg;
       while (message.length) {
         this.messageQueue.push({

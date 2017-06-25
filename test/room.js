@@ -1,7 +1,7 @@
 const Live = require('../dist/bilibili-live.js')
 
 Live.initRoom({
-  roomId: 92052,
+  roomId: 39936,
 }).then(room => {
   room
     .on('data', (msg) => {
