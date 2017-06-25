@@ -1141,7 +1141,7 @@ var UserService = function (_EventEmitter) {
     }
   }, {
     key: 'sendMessage',
-    value: function sendMessage() {
+    value: function sendMessage(msg) {
       var message = '' + msg;
       return _util2.default.sendMessage({
         color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
