@@ -131,7 +131,7 @@ class UserService extends EventEmitter {
     })
   }
 
-  sendMessage () {
+  sendMessage (msg) {
     let message = ''+msg
     return Util.sendMessage({
       color: Number(Number(DANMAKU_COLOR[this.danmakuColor]).toString(10)),
