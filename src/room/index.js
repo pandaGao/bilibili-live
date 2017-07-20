@@ -17,9 +17,10 @@ const WSDMPORT = 2244
 const WSSDMPORT = 2245
 const WSDMPATH = 'sub'
 
-const HEARTBEAT_DELAY = 30000
-const GIFT_END_DELAY = 3000
-const FETCH_FANS_DELAY = 5000
+const HEARTBEAT_DELAY = 3e5
+const GIFT_END_DELAY = 3e3
+const FETCH_FANS_DELAY = 5e3
+const CHECK_DELAY = 31e4
 
 export default class RoomService extends EventEmitter {
   constructor (config = {}) {
@@ -38,8 +39,8 @@ export default class RoomService extends EventEmitter {
     this.heartbeatService = null
     this.fansService = null
     this.checkService = _.debounce(() => {
-      this.emit('error')
-    }, HEARTBEAT_DELAY)
+      this.emit('error', 'check failed')
+    }, CHECK_DELAY)
 
     this.giftMap = new Map()
     this.fansSet = new Set()
