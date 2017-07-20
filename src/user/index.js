@@ -65,8 +65,10 @@ class UserService extends EventEmitter {
 
   getInfo () {
     return Util.getUserLiveInfo().then(res => {
-      this.userInfo = res.user
-      this.userRoom = res.room
+      if (res) {
+        this.userInfo = res.user
+        this.userRoom = res.room
+      }
       return this
     })
   }

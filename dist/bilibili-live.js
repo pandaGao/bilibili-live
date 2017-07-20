@@ -324,7 +324,9 @@ var Util = function () {
           'Cookie': this.cookie
         }
       }).then(function (res) {
-        var data = JSON.parse(res).data;
+        var data = JSON.parse(res);
+        if (data.code != 0) return false;
+        data = data.data;
         return {
           room: {
             id: data.roomid,
@@ -721,6 +723,9 @@ var RoomService = function (_EventEmitter) {
     _this.socket = null;
     _this.heartbeatService = null;
     _this.fansService = null;
+    _this.checkService = _lodash2.default.debounce(function () {
+      _this.emit('error');
+    }, HEARTBEAT_DELAY);
 
     _this.giftMap = new Map();
     _this.fansSet = new Set();
@@ -808,6 +813,7 @@ var RoomService = function (_EventEmitter) {
         });
 
         this.socket.on('message', function (msg) {
+          _this3.checkService();
           _decoder2.default.decodeData(msg).map(function (m) {
             if (m.type == 'connected') {
               _this3.sendHeartbeat();
@@ -835,6 +841,7 @@ var RoomService = function (_EventEmitter) {
         });
 
         this.socket.on('data', function (msg) {
+          _this3.checkService();
           _decoder2.default.decodeData(msg).map(function (m) {
             if (m.type == 'connected') {
               _this3.sendHeartbeat();
@@ -1061,8 +1068,10 @@ var UserService = function (_EventEmitter) {
       var _this3 = this;
 
       return _util2.default.getUserLiveInfo().then(function (res) {
-        _this3.userInfo = res.user;
-        _this3.userRoom = res.room;
+        if (res) {
+          _this3.userInfo = res.user;
+          _this3.userRoom = res.room;
+        }
         return _this3;
       });
     }

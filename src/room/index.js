@@ -37,6 +37,9 @@ export default class RoomService extends EventEmitter {
     this.socket = null
     this.heartbeatService = null
     this.fansService = null
+    this.checkService = _.debounce(() => {
+      this.emit('error')
+    }, HEARTBEAT_DELAY)
 
     this.giftMap = new Map()
     this.fansSet = new Set()
@@ -113,6 +116,7 @@ export default class RoomService extends EventEmitter {
       })
 
       this.socket.on('message', (msg) => {
+        this.checkService()
         DMDecoder.decodeData(msg).map(m => {
           if (m.type == 'connected') {
             this.sendHeartbeat()
@@ -140,6 +144,7 @@ export default class RoomService extends EventEmitter {
       })
 
       this.socket.on('data', (msg) => {
+        this.checkService()
         DMDecoder.decodeData(msg).map(m => {
           if (m.type == 'connected') {
             this.sendHeartbeat()

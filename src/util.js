@@ -207,7 +207,9 @@ class Util {
         'Cookie': this.cookie
       }
     }).then(res => {
-      let data = JSON.parse(res).data
+      let data = JSON.parse(res)
+      if (data.code != 0) return false
+      data = data.data
       return {
         room: {
           id: data.roomid,
