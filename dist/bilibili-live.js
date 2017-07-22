@@ -696,10 +696,10 @@ var WSDMPORT = 2244;
 var WSSDMPORT = 2245;
 var WSDMPATH = 'sub';
 
-var HEARTBEAT_DELAY = 3e5;
+var HEARTBEAT_DELAY = 1e4;
 var GIFT_END_DELAY = 3e3;
 var FETCH_FANS_DELAY = 5e3;
-var CHECK_DELAY = 31e4;
+var CHECK_DELAY = 15e3;
 
 var RoomService = function (_EventEmitter) {
   _inherits(RoomService, _EventEmitter);

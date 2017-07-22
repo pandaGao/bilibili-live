@@ -17,10 +17,10 @@ const WSDMPORT = 2244
 const WSSDMPORT = 2245
 const WSDMPATH = 'sub'
 
-const HEARTBEAT_DELAY = 3e5
+const HEARTBEAT_DELAY = 1e4
 const GIFT_END_DELAY = 3e3
 const FETCH_FANS_DELAY = 5e3
-const CHECK_DELAY = 31e4
+const CHECK_DELAY = 15e3
 
 export default class RoomService extends EventEmitter {
   constructor (config = {}) {
