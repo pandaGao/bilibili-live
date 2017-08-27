@@ -5,7 +5,7 @@
   "main": "dist/bilibili-live.js",
   "module": "dist/bilibili-live.esm.js",
   "scripts": {
-    "build": "npm run build:cjs && npm run build:es",
+    "build": "rollup -c",
     "build:cjs": "rollup ./src/index.js --output.format cjs --output.file ./dist/bilibili-live.js",
     "build:es": "rollup ./src/index.js --output.format es --output.file ./dist/bilibili-live.esm.js",
     "test:user": "node ./test/user.js",
@@ -20,7 +20,9 @@
     "ws": "^3.0.0"
   },
   "devDependencies": {
-    "rollup": "^0.48.2"
+    "rollup": "^0.48.2",
+    "rollup-plugin-commonjs": "^8.2.0",
+    "rollup-plugin-node-resolve": "^3.0.0"
   },
   "repository": {
     "type": "git",
