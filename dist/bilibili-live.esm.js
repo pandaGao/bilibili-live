@@ -1,16 +1,12 @@
-'use strict';
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var EventEmitter = _interopDefault(require('events'));
-var WebSocket = _interopDefault(require('ws'));
-var net = _interopDefault(require('net'));
-var _ = _interopDefault(require('lodash'));
-var string_decoder = require('string_decoder');
-var qs = _interopDefault(require('querystring'));
-var http = _interopDefault(require('http'));
-var https = _interopDefault(require('https'));
-var url = _interopDefault(require('url'));
+import EventEmitter from 'events';
+import WebSocket from 'ws';
+import net from 'net';
+import _ from 'lodash';
+import { StringDecoder } from 'string_decoder';
+import qs from 'querystring';
+import http from 'http';
+import https from 'https';
+import url from 'url';
 
 const WS_OP_HEARTBEAT = 2;
 const WS_OP_HEARTBEAT_REPLY = 3;
@@ -77,7 +73,7 @@ var Consts = {
   }]
 };
 
-const textDecoder = new string_decoder.StringDecoder('utf8');
+const textDecoder = new StringDecoder('utf8');
 
 function decodeBuffer (buff) {
   let data = {};
@@ -1399,4 +1395,4 @@ var index = {
   API: Api
 };
 
-module.exports = index;
+export default index;

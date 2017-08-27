@@ -1,23 +1,9 @@
-import Room from './room'
-import User from './user'
-import Util from './util.js'
-
-function initRoom (config) {
-  return new Room(config).init()
-}
-
-function initUser (config) {
-  return new User(config).init()
-}
-
-export {
-  initRoom,
-  initUser,
-  Util
-}
+import Room from './service/room/index.js'
+import User from './service/user/index.js'
+import API from './api/index.js'
 
 export default {
-  initRoom,
-  initUser,
-  Util
+  Room,
+  User,
+  API
 }
