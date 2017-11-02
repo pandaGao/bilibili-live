@@ -1,35 +1,45 @@
-// 获取直播间原始ID
-export function getRoomId(roomUrl) {
+// 获取直播间原始ID 已废弃
+export function getRoomId (roomUrl) {
   return this.get({
     url: `live.bilibili.com/${roomUrl}`,
     html: true
   }).then(res => {
     let data = res
     let reg = data.match(/ROOMID \= (.*?)\;/)
-    if (reg && reg.length >= 2)
-      return reg[1]
-    else
-      return roomURL
+    if (reg && reg.length >= 2) { return reg[1] } else { return roomUrl }
   })
 }
 
-// 获取直播间简介
-export function getRoomIntro(roomUrl) {
+export function getRoomBaseInfo (roomUrl) {
+  return this.get({
+    url: `api.live.bilibili.com/room/v1/Room/room_init?id=${roomUrl}`,
+    params: {
+      id: roomUrl
+    }
+  }).then(res => {
+    let data = JSON.parse(res).data
+    return {
+      id: data['room_id'],
+      shortId: data['short_id'],
+      anchorId: data['uid']
+    }
+  })
+}
+
+// 获取直播间简介 已废弃
+export function getRoomIntro (roomUrl) {
   return this.get({
     url: `live.bilibili.com/${roomUrl}`,
     html: true
   }).then(res => {
     let data = res
     let reg = data.match(/<div class="content-container" ms-html="roomIntro">([\S\s]*)<\/div>[.\s]*<\/div>[.\s]*<!-- Recommend Videos/)
-    if (reg && reg.length >= 2)
-      return reg[1]
-    else
-      return ''
+    if (reg && reg.length >= 2) { return reg[1] } else { return '' }
   })
 }
 
 // 获取直播间信息
-export function getRoomInfo() {
+export function getRoomInfo () {
   return this.get({
     url: `live.bilibili.com/live/getInfo`,
     params: {
@@ -47,13 +57,13 @@ export function getRoomInfo() {
     }
     room.fans = data['FANS_COUNT']
     room.liveStatus = data['LIVE_STATUS']
-    room.liveStartTime = data['LIVE_TIMELINE']*1000
+    room.liveStartTime = data['LIVE_TIMELINE'] * 1000
     return room
   })
 }
 
 // 获取直播间历史弹幕
-export function getRoomMessage() {
+export function getRoomMessage () {
   return this.post({
     uri: 'ajax/msg',
     body: {
@@ -68,7 +78,7 @@ export function getRoomMessage() {
 }
 
 // 获取直播间粉丝列表
-export function getAnchorFollwerList(anchorId, page=1, pageSize=20) {
+export function getAnchorFollwerList (anchorId, page = 1, pageSize = 20) {
   return this.get({
     url: 'api.bilibili.com/x/relation/followers',
     params: {
@@ -88,7 +98,7 @@ export function getAnchorFollwerList(anchorId, page=1, pageSize=20) {
 }
 
 // 获取直播间房管列表
-export function getRoomAdminList() {
+export function getRoomAdminList () {
   return this.post({
     uri: 'liveact/ajaxGetAdminList',
     body: {
@@ -110,7 +120,7 @@ export function getRoomAdminList() {
 }
 
 // 获取被禁言用户列表
-export function getRoomBlockList(page = 1) {
+export function getRoomBlockList (page = 1) {
   return this.post({
     uri: 'liveact/ajaxGetBlockList',
     body: {

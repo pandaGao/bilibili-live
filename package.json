@@ -9,7 +9,7 @@
     "build:cjs": "rollup ./src/index.js --output.format cjs --output.file ./dist/bilibili-live.js",
     "build:es": "rollup ./src/index.js --output.format es --output.file ./dist/bilibili-live.esm.js",
     "test:user": "node ./test/user.js",
-    "test:room": "node ./test/room.js",
+    "test:room": "node --inspect ./test/room.js",
     "test:api": "node ./test/api.js",
     "test:action": "node --inspect ./test/action.js"
   },

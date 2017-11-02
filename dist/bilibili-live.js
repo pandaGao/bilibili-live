@@ -540,38 +540,48 @@ function post(requestUrl, config = {}) {
   }
 }
 
-// 获取直播间原始ID
-function getRoomId(roomUrl) {
+// 获取直播间原始ID 已废弃
+function getRoomId (roomUrl) {
   return this.get({
     url: `live.bilibili.com/${roomUrl}`,
     html: true
   }).then(res => {
     let data = res;
     let reg = data.match(/ROOMID \= (.*?)\;/);
-    if (reg && reg.length >= 2)
-      return reg[1]
-    else
-      return roomURL
+    if (reg && reg.length >= 2) { return reg[1] } else { return roomUrl }
   })
 }
 
-// 获取直播间简介
-function getRoomIntro(roomUrl) {
+function getRoomBaseInfo (roomUrl) {
+  return this.get({
+    url: `api.live.bilibili.com/room/v1/Room/room_init?id=${roomUrl}`,
+    params: {
+      id: roomUrl
+    }
+  }).then(res => {
+    let data = JSON.parse(res).data;
+    return {
+      id: data['room_id'],
+      shortId: data['short_id'],
+      anchorId: data['uid']
+    }
+  })
+}
+
+// 获取直播间简介 已废弃
+function getRoomIntro (roomUrl) {
   return this.get({
     url: `live.bilibili.com/${roomUrl}`,
     html: true
   }).then(res => {
     let data = res;
     let reg = data.match(/<div class="content-container" ms-html="roomIntro">([\S\s]*)<\/div>[.\s]*<\/div>[.\s]*<!-- Recommend Videos/);
-    if (reg && reg.length >= 2)
-      return reg[1]
-    else
-      return ''
+    if (reg && reg.length >= 2) { return reg[1] } else { return '' }
   })
 }
 
 // 获取直播间信息
-function getRoomInfo() {
+function getRoomInfo () {
   return this.get({
     url: `live.bilibili.com/live/getInfo`,
     params: {
@@ -589,13 +599,13 @@ function getRoomInfo() {
     };
     room.fans = data['FANS_COUNT'];
     room.liveStatus = data['LIVE_STATUS'];
-    room.liveStartTime = data['LIVE_TIMELINE']*1000;
+    room.liveStartTime = data['LIVE_TIMELINE'] * 1000;
     return room
   })
 }
 
 // 获取直播间历史弹幕
-function getRoomMessage() {
+function getRoomMessage () {
   return this.post({
     uri: 'ajax/msg',
     body: {
@@ -610,7 +620,7 @@ function getRoomMessage() {
 }
 
 // 获取直播间粉丝列表
-function getAnchorFollwerList(anchorId, page=1, pageSize=20) {
+function getAnchorFollwerList (anchorId, page = 1, pageSize = 20) {
   return this.get({
     url: 'api.bilibili.com/x/relation/followers',
     params: {
@@ -630,7 +640,7 @@ function getAnchorFollwerList(anchorId, page=1, pageSize=20) {
 }
 
 // 获取直播间房管列表
-function getRoomAdminList() {
+function getRoomAdminList () {
   return this.post({
     uri: 'liveact/ajaxGetAdminList',
     body: {
@@ -652,7 +662,7 @@ function getRoomAdminList() {
 }
 
 // 获取被禁言用户列表
-function getRoomBlockList(page = 1) {
+function getRoomBlockList (page = 1) {
   return this.post({
     uri: 'liveact/ajaxGetBlockList',
     body: {
@@ -682,6 +692,7 @@ function getRoomBlockList(page = 1) {
 
 var basic = Object.freeze({
 	getRoomId: getRoomId,
+	getRoomBaseInfo: getRoomBaseInfo,
 	getRoomIntro: getRoomIntro,
 	getRoomInfo: getRoomInfo,
 	getRoomMessage: getRoomMessage,
@@ -1264,7 +1275,7 @@ class UserService extends EventEmitter {
     this._infoService = null;
     this._api = new Api();
     this.api = this._api;
-
+    
     this._api.useHttps(config.useHttps || false);
     this._api.setCookie(config.cookie || '');
     this._api.setRoomId(config.roomId || '23058');
