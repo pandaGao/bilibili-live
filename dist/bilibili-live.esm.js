@@ -1125,7 +1125,7 @@ class InfoService extends EventEmitter {
 }
 
 class RoomService extends EventEmitter {
-  constructor(config = {}) {
+  constructor (config = {}) {
     super();
 
     this.roomURL = config.url || '23058';
@@ -1138,12 +1138,12 @@ class RoomService extends EventEmitter {
     this._infoService = null;
   }
 
-  connect() {
+  connect () {
     // 获取直播间原始房间号
-    return this._api.getRoomId(this.roomURL).then(roomId => {
+    return this._api.getRoomBaseInfo(this.roomURL).then(info => {
       // 获取直播间基本信息
-      this.roomId = roomId;
-      this._api.setRoomId(roomId);
+      this.roomId = info.id;
+      this._api.setRoomId(info.id);
       return this._api.getRoomInfo()
     }).then(info => {
       this._danmakuService = new DanmakuService({
@@ -1179,7 +1179,7 @@ class RoomService extends EventEmitter {
     })
   }
 
-  disconnect() {
+  disconnect () {
     this._danmakuService.disconnect();
     this._fansService.disconnect();
     this._infoService.disconnect();
@@ -1189,16 +1189,16 @@ class RoomService extends EventEmitter {
     this._infoService = null;
   }
 
-  reconnect() {
+  reconnect () {
     this.disconnect();
     this.connect();
   }
 
-  setUseGiftBundle(use) {
+  setUseGiftBundle (use) {
     this._danmakuService.setUseGiftBundle(use);
   }
 
-  handleDanmakuEvents() {
+  handleDanmakuEvents () {
     this._danmakuService.on('connect', () => {
       this.emit('danmaku.connect');
     }).on('connected', () => {
@@ -1212,7 +1212,7 @@ class RoomService extends EventEmitter {
     });
   }
 
-  handleFansEvents() {
+  handleFansEvents () {
     this._fansService.on('newFans', (fans) => {
       let newFans = {
         type: 'newFans',
@@ -1223,7 +1223,7 @@ class RoomService extends EventEmitter {
     });
   }
 
-  handleInfoEvents() {
+  handleInfoEvents () {
     this._infoService.on('info', (info) => {
       let roomInfo = Object.assign({}, info, { ts: new Date().getTime() });
       this.emit('info', roomInfo);

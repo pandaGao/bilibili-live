@@ -2,7 +2,7 @@ const { Room, API } = require('../dist/bilibili-live.js')
 
 let LiveRoom = null
 let count = 0
-function initRoom(url) {
+function initRoom (url) {
   new Room({
     url
   }).connect().then(room => {
