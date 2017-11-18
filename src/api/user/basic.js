@@ -1,5 +1,5 @@
 // 检查cookie是否过期
-export function checkUserLogin() {
+export function checkUserLogin () {
   return this.post({
     uri: 'User/getUserInfo'
   }).then(res => {
@@ -12,14 +12,14 @@ export function checkUserLogin() {
 }
 
 // 获取用户基本信息
-export function getUserInfo() {
+export function getUserInfo () {
   return this.post({
     uri: 'i/api/liveinfo'
   }).then(res => {
     let data
     try {
       data = JSON.parse(res)
-    } catch(e) {
+    } catch (e) {
       return false
     }
     if (data.code != 0) return false

@@ -704,7 +704,7 @@ var basic = Object.freeze({
 let apis = Object.assign({}, basic);
 
 // 检查cookie是否过期
-function checkUserLogin() {
+function checkUserLogin () {
   return this.post({
     uri: 'User/getUserInfo'
   }).then(res => {
@@ -717,14 +717,14 @@ function checkUserLogin() {
 }
 
 // 获取用户基本信息
-function getUserInfo() {
+function getUserInfo () {
   return this.post({
     uri: 'i/api/liveinfo'
   }).then(res => {
     let data;
     try {
       data = JSON.parse(res);
-    } catch(e) {
+    } catch (e) {
       return false
     }
     if (data.code != 0) return false
@@ -765,35 +765,35 @@ var basic$1 = Object.freeze({
 });
 
 // 发送弹幕
-function sendMessage(msg, color=0xffffff, mode=1) {
+function sendMessage (msg, color = 0xffffff, mode = 1) {
   return this.post({
     url: 'live.bilibili.com/msg/send',
     body: {
       color: Number(Number(color).toString(10)),
       mode,
       msg,
-      rnd: Math.floor(new Date().getTime()/1000),
+      rnd: Math.floor(new Date().getTime() / 1000),
       roomid: this.roomId
     }
   })
 }
 
 // 发送在线心跳
-function sendHeartbeat() {
+function sendHeartbeat () {
   return this.post({
     uri: 'User/userOnlineHeart',
     headers: {
       'Content-Type': 'text/html; charset=UTF-8',
       'Host': 'api.live.bilibili.com',
       'Origin': 'http://live.bilibili.com',
-      'Referer': 'http://live.bilibili.com/'+this.roomId,
+      'Referer': 'http://live.bilibili.com/' + this.roomId,
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
     }
   })
 }
 
 // 发送在线礼物心跳
-function sendEventHeartbeat() {
+function sendEventHeartbeat () {
   return this.get({
     uri: 'eventRoom/heart',
     params: {
@@ -803,7 +803,7 @@ function sendEventHeartbeat() {
 }
 
 // 每日签到
-function dailySign() {
+function dailySign () {
   return this.get({
     uri: 'sign/doSign'
   }).then(res => {
@@ -821,7 +821,7 @@ var audience = Object.freeze({
 });
 
 // 切换直播间状态 1 -> 开启 0 -> 关闭
-function toggleLiveRoom(status, area) {
+function toggleLiveRoom (status, area) {
   let body = {
     status,
     roomid: this.roomId
@@ -839,9 +839,9 @@ function toggleLiveRoom(status, area) {
 }
 
 // 获取直播分区列表
-function getAreaList() {
+function getAreaList () {
   return this.get({
-    uri: '/room/v1/Area/getList',
+    uri: '/room/v1/Area/getList'
   }).then(res => {
     let data = JSON.parse(res).data;
     return data
@@ -849,7 +849,7 @@ function getAreaList() {
 }
 
 // 获取直播间推流码
-function getRoomRTMP() {
+function getRoomRTMP () {
   return this.post({
     uri: 'liveact/getrtmp',
     body: {
@@ -867,7 +867,7 @@ function getRoomRTMP() {
 }
 
 // 禁言用户
-function blockUser(userId, hour) {
+function blockUser (userId, hour) {
   return this.post({
     uri: 'liveact/room_block_user',
     body: {
@@ -883,7 +883,7 @@ function blockUser(userId, hour) {
 }
 
 // 取消禁言
-function deleteBlockUser(blockId) {
+function deleteBlockUser (blockId) {
   return this.post({
     uri: 'liveact/del_room_block_user',
     body: {
@@ -897,7 +897,7 @@ function deleteBlockUser(blockId) {
 }
 
 // 任命房管
-function setAdmin(userId) {
+function setAdmin (userId) {
   return this.post({
     uri: 'liveact/admin',
     body: {
@@ -912,7 +912,7 @@ function setAdmin(userId) {
 }
 
 // 取消房管
-function deleteAdmin(userId) {
+function deleteAdmin (userId) {
   return this.post({
     uri: 'liveact/admin',
     body: {
@@ -938,13 +938,12 @@ var anchor = Object.freeze({
 });
 
 // 参与小电视抽奖
-function joinSmallTV(roomId, tvId) {
+function joinSmallTV (roomId, tvId) {
   return this.get({
-    uri: 'SmallTV/join',
+    uri: 'gift/v2/smalltv/join',
     params: {
-      roomId: roomId,
-      id: tvId,
-      _: new Date().getTime()
+      roomid: roomId,
+      raffleId: tvId
     }
   }).then(res => {
     let data = JSON.parse(res);
@@ -953,12 +952,40 @@ function joinSmallTV(roomId, tvId) {
 }
 
 // 查看小电视抽奖奖励
-function getSmallTVReward(tvId) {
+function getSmallTVReward (roomId, tvId) {
   return this.get({
-    uri: 'SmallTV/getReward',
+    uri: 'gift/v2/smalltv/notice',
     params: {
-      id: tvId,
-      _: new Date().getTime()
+      roomid: roomId,
+      raffleId: tvId
+    }
+  }).then(res => {
+    let data = JSON.parse(res);
+    return data
+  })
+}
+
+// 参加丰收祭典
+function joinRaffle (roomId, raffleId) {
+  return this.get({
+    uri: 'activity/v1/Raffle/join',
+    params: {
+      roomid: roomId,
+      raffleId
+    }
+  }).then(res => {
+    let data = JSON.parse(res);
+    return data
+  })
+}
+
+// 查看丰收祭典奖励
+function getRaffleReward (roomId, raffleId) {
+  return this.get({
+    uri: 'activity/v1/Raffle/notice',
+    params: {
+      roomid: roomId,
+      raffleId
     }
   }).then(res => {
     let data = JSON.parse(res);
@@ -969,7 +996,9 @@ function getSmallTVReward(tvId) {
 
 var activity = Object.freeze({
 	joinSmallTV: joinSmallTV,
-	getSmallTVReward: getSmallTVReward
+	getSmallTVReward: getSmallTVReward,
+	joinRaffle: joinRaffle,
+	getRaffleReward: getRaffleReward
 });
 
 let apis$1 = Object.assign({}, basic$1, audience, anchor, activity);
