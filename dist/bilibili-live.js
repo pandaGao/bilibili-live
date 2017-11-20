@@ -540,21 +540,10 @@ function post(requestUrl, config = {}) {
   }
 }
 
-// 获取直播间原始ID 已废弃
-function getRoomId (roomUrl) {
-  return this.get({
-    url: `live.bilibili.com/${roomUrl}`,
-    html: true
-  }).then(res => {
-    let data = res;
-    let reg = data.match(/ROOMID \= (.*?)\;/);
-    if (reg && reg.length >= 2) { return reg[1] } else { return roomUrl }
-  })
-}
-
+// 获取直播间基本信息
 function getRoomBaseInfo (roomUrl) {
   return this.get({
-    url: `api.live.bilibili.com/room/v1/Room/room_init?id=${roomUrl}`,
+    uri: `room/v1/Room/room_init`,
     params: {
       id: roomUrl
     }
@@ -568,39 +557,39 @@ function getRoomBaseInfo (roomUrl) {
   })
 }
 
-// 获取直播间简介 已废弃
-function getRoomIntro (roomUrl) {
-  return this.get({
-    url: `live.bilibili.com/${roomUrl}`,
-    html: true
-  }).then(res => {
-    let data = res;
-    let reg = data.match(/<div class="content-container" ms-html="roomIntro">([\S\s]*)<\/div>[.\s]*<\/div>[.\s]*<!-- Recommend Videos/);
-    if (reg && reg.length >= 2) { return reg[1] } else { return '' }
-  })
-}
-
 // 获取直播间信息
 function getRoomInfo () {
   return this.get({
-    url: `live.bilibili.com/live/getInfo`,
+    uri: `room/v1/Room/get_info`,
     params: {
-      roomid: this.roomId
+      room_id: this.roomId,
+      from: 'room'
     }
   }).then(res => {
     let data = JSON.parse(res).data;
     let room = {};
-    room.title = data['ROOMTITLE'];
-    room.areaId = data['AREAID'];
-    room.cover = data['COVER'];
+    room.title = data['title'];
+    room.areaId = data['area_id'];
+    room.cover = data['user_cover'];
+    room.liveStatus = data['live_status'];
+    room.liveStartTime = data['live_time'];
     room.anchor = {
-      id: data['MASTERID'],
-      name: data['ANCHOR_NICK_NAME']
+      id: data['uid']
     };
-    room.fans = data['FANS_COUNT'];
-    room.liveStatus = data['LIVE_STATUS'];
-    room.liveStartTime = data['LIVE_TIMELINE'] * 1000;
     return room
+  })
+}
+
+// 获取直播间粉丝数
+function getRoomFansCount (anchorId) {
+  return this.get({
+    uri: `feed/v1/feed/GetUserFc`,
+    params: {
+      follow: anchorId
+    }
+  }).then(res => {
+    let data = JSON.parse(res).data;
+    return data.fc
   })
 }
 
@@ -620,13 +609,14 @@ function getRoomMessage () {
 }
 
 // 获取直播间粉丝列表
-function getAnchorFollwerList (anchorId, page = 1, pageSize = 20) {
+function getAnchorFollwerList (anchorId, page = 1, pageSize = 20, order = 'desc') {
   return this.get({
     url: 'api.bilibili.com/x/relation/followers',
     params: {
       vmid: anchorId,
       pn: page,
-      ps: pageSize
+      ps: pageSize,
+      order
     }
   }).then(res => {
     let data = JSON.parse(res).data;
@@ -691,10 +681,9 @@ function getRoomBlockList (page = 1) {
 
 
 var basic = Object.freeze({
-	getRoomId: getRoomId,
 	getRoomBaseInfo: getRoomBaseInfo,
-	getRoomIntro: getRoomIntro,
 	getRoomInfo: getRoomInfo,
+	getRoomFansCount: getRoomFansCount,
 	getRoomMessage: getRoomMessage,
 	getAnchorFollwerList: getAnchorFollwerList,
 	getRoomAdminList: getRoomAdminList,
@@ -1052,7 +1041,7 @@ class Api {
 Object.assign(Api.prototype, apis, apis$1);
 
 class FansService extends EventEmitter {
-  constructor(config = {}) {
+  constructor (config = {}) {
     super();
 
     this.userId = config.userId;
@@ -1066,32 +1055,35 @@ class FansService extends EventEmitter {
     this._api.useHttps(config.useHttps);
   }
 
-  connect() {
+  connect () {
     this.fetchFans();
     this._service = setInterval(() => {
       this.fetchFans();
     }, this.updateDelay);
   }
 
-  disconnect() {
+  disconnect () {
     clearInterval(this._service);
   }
 
-  reconnect() {
+  reconnect () {
     this.disconnect();
     this.connect();
   }
 
-  fetchFans() {
+  fetchFans () {
     let ts = new Date();
     this._api.getAnchorFollwerList(this.userId, 1, 50).then(res => {
       this.updateFansSet(res, ts);
     }).catch(err => {
       console.log(err);
     });
+    this._api.getRoomFansCount(this.userId).then(res => {
+      this.emit('fansCount', res);
+    });
   }
 
-  updateFansSet(fansList, ts) {
+  updateFansSet (fansList, ts) {
     if (ts < this._lastUpdate) return
     if (this._fansSet.size) {
       fansList.forEach(fans => {
@@ -1107,11 +1099,10 @@ class FansService extends EventEmitter {
     }
     this._lastUpdate = ts;
   }
-
 }
 
 class InfoService extends EventEmitter {
-  constructor(config = {}) {
+  constructor (config = {}) {
     super();
 
     this.updateDelay = config.updateDelay || 5e3;
@@ -1125,23 +1116,23 @@ class InfoService extends EventEmitter {
     this._api.setRoomId(config.roomId);
   }
 
-  connect() {
+  connect () {
     this.fetchInfo();
     this._service = setInterval(() => {
       this.fetchInfo();
     }, this.updateDelay);
   }
 
-  disconnect() {
+  disconnect () {
     clearInterval(this._service);
   }
 
-  reconnect() {
+  reconnect () {
     this.disconnect();
     this.connect();
   }
 
-  fetchInfo() {
+  fetchInfo () {
     let ts = new Date();
     this._api.getRoomInfo().then(res => {
       if (ts < this._lastUpdate) return
@@ -1154,7 +1145,6 @@ class InfoService extends EventEmitter {
       console.log(err);
     });
   }
-
 }
 
 class RoomService extends EventEmitter {
@@ -1162,8 +1152,9 @@ class RoomService extends EventEmitter {
     super();
 
     this.roomURL = config.url || '23058';
-    this.roomId = this.roomURL;
+    this.roomId = config.roomId || this.roomURL;
     this.config = config;
+    this.connectDirectly =
 
     this._api = new Api();
     this._danmakuService = null;
@@ -1253,6 +1244,9 @@ class RoomService extends EventEmitter {
         ts: new Date().getTime()
       };
       this.emit('newFans', newFans);
+    });
+    this._fansService.on('fansCount', (fansCount) => {
+      this.emit('fansCount', fansCount);
     });
   }
 

@@ -3,7 +3,7 @@ import EventEmitter from 'events'
 import Api from '../../../api/index.js'
 
 export default class InfoService extends EventEmitter {
-  constructor(config = {}) {
+  constructor (config = {}) {
     super()
 
     this.updateDelay = config.updateDelay || 5e3
@@ -17,23 +17,23 @@ export default class InfoService extends EventEmitter {
     this._api.setRoomId(config.roomId)
   }
 
-  connect() {
+  connect () {
     this.fetchInfo()
     this._service = setInterval(() => {
       this.fetchInfo()
     }, this.updateDelay)
   }
 
-  disconnect() {
+  disconnect () {
     clearInterval(this._service)
   }
 
-  reconnect() {
+  reconnect () {
     this.disconnect()
     this.connect()
   }
 
-  fetchInfo() {
+  fetchInfo () {
     let ts = new Date()
     this._api.getRoomInfo().then(res => {
       if (ts < this._lastUpdate) return
@@ -46,5 +46,4 @@ export default class InfoService extends EventEmitter {
       console.log(err)
     })
   }
-
 }

@@ -1,18 +1,7 @@
-// 获取直播间原始ID 已废弃
-export function getRoomId (roomUrl) {
-  return this.get({
-    url: `live.bilibili.com/${roomUrl}`,
-    html: true
-  }).then(res => {
-    let data = res
-    let reg = data.match(/ROOMID \= (.*?)\;/)
-    if (reg && reg.length >= 2) { return reg[1] } else { return roomUrl }
-  })
-}
-
+// 获取直播间基本信息
 export function getRoomBaseInfo (roomUrl) {
   return this.get({
-    url: `api.live.bilibili.com/room/v1/Room/room_init?id=${roomUrl}`,
+    uri: `room/v1/Room/room_init`,
     params: {
       id: roomUrl
     }
@@ -26,39 +15,39 @@ export function getRoomBaseInfo (roomUrl) {
   })
 }
 
-// 获取直播间简介 已废弃
-export function getRoomIntro (roomUrl) {
-  return this.get({
-    url: `live.bilibili.com/${roomUrl}`,
-    html: true
-  }).then(res => {
-    let data = res
-    let reg = data.match(/<div class="content-container" ms-html="roomIntro">([\S\s]*)<\/div>[.\s]*<\/div>[.\s]*<!-- Recommend Videos/)
-    if (reg && reg.length >= 2) { return reg[1] } else { return '' }
-  })
-}
-
 // 获取直播间信息
 export function getRoomInfo () {
   return this.get({
-    url: `live.bilibili.com/live/getInfo`,
+    uri: `room/v1/Room/get_info`,
     params: {
-      roomid: this.roomId
+      room_id: this.roomId,
+      from: 'room'
     }
   }).then(res => {
     let data = JSON.parse(res).data
     let room = {}
-    room.title = data['ROOMTITLE']
-    room.areaId = data['AREAID']
-    room.cover = data['COVER']
+    room.title = data['title']
+    room.areaId = data['area_id']
+    room.cover = data['user_cover']
+    room.liveStatus = data['live_status']
+    room.liveStartTime = data['live_time']
     room.anchor = {
-      id: data['MASTERID'],
-      name: data['ANCHOR_NICK_NAME']
+      id: data['uid']
     }
-    room.fans = data['FANS_COUNT']
-    room.liveStatus = data['LIVE_STATUS']
-    room.liveStartTime = data['LIVE_TIMELINE'] * 1000
     return room
+  })
+}
+
+// 获取直播间粉丝数
+export function getRoomFansCount (anchorId) {
+  return this.get({
+    uri: `feed/v1/feed/GetUserFc`,
+    params: {
+      follow: anchorId
+    }
+  }).then(res => {
+    let data = JSON.parse(res).data
+    return data.fc
   })
 }
 
@@ -78,13 +67,14 @@ export function getRoomMessage () {
 }
 
 // 获取直播间粉丝列表
-export function getAnchorFollwerList (anchorId, page = 1, pageSize = 20) {
+export function getAnchorFollwerList (anchorId, page = 1, pageSize = 20, order = 'desc') {
   return this.get({
     url: 'api.bilibili.com/x/relation/followers',
     params: {
       vmid: anchorId,
       pn: page,
-      ps: pageSize
+      ps: pageSize,
+      order
     }
   }).then(res => {
     let data = JSON.parse(res).data

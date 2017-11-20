@@ -10,8 +10,9 @@ export default class RoomService extends EventEmitter {
     super()
 
     this.roomURL = config.url || '23058'
-    this.roomId = this.roomURL
+    this.roomId = config.roomId || this.roomURL
     this.config = config
+    this.connectDirectly =
 
     this._api = new Api()
     this._danmakuService = null
@@ -101,6 +102,9 @@ export default class RoomService extends EventEmitter {
         ts: new Date().getTime()
       }
       this.emit('newFans', newFans)
+    })
+    this._fansService.on('fansCount', (fansCount) => {
+      this.emit('fansCount', fansCount)
     })
   }
 

@@ -2,7 +2,7 @@ import EventEmitter from 'events'
 import Api from '../../../api/index.js'
 
 export default class FansService extends EventEmitter {
-  constructor(config = {}) {
+  constructor (config = {}) {
     super()
 
     this.userId = config.userId
@@ -16,32 +16,35 @@ export default class FansService extends EventEmitter {
     this._api.useHttps(config.useHttps)
   }
 
-  connect() {
+  connect () {
     this.fetchFans()
     this._service = setInterval(() => {
       this.fetchFans()
     }, this.updateDelay)
   }
 
-  disconnect() {
+  disconnect () {
     clearInterval(this._service)
   }
 
-  reconnect() {
+  reconnect () {
     this.disconnect()
     this.connect()
   }
 
-  fetchFans() {
+  fetchFans () {
     let ts = new Date()
     this._api.getAnchorFollwerList(this.userId, 1, 50).then(res => {
       this.updateFansSet(res, ts)
     }).catch(err => {
       console.log(err)
     })
+    this._api.getRoomFansCount(this.userId).then(res => {
+      this.emit('fansCount', res)
+    })
   }
 
-  updateFansSet(fansList, ts) {
+  updateFansSet (fansList, ts) {
     if (ts < this._lastUpdate) return
     if (this._fansSet.size) {
       fansList.forEach(fans => {
@@ -57,5 +60,4 @@ export default class FansService extends EventEmitter {
     }
     this._lastUpdate = ts
   }
-
 }
