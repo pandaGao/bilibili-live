@@ -580,6 +580,19 @@ function getRoomInfo () {
   })
 }
 
+// 获取直播间礼物列表
+function getRoomGiftList () {
+  return this.get({
+    uri: `gift/v2/live/room_gift_list`,
+    params: {
+      roomid: this.roomId
+    }
+  }).then(res => {
+    let data = JSON.parse(res).data;
+    return data
+  })
+}
+
 // 获取直播间粉丝数
 function getRoomFansCount (anchorId) {
   return this.get({
@@ -683,6 +696,7 @@ function getRoomBlockList (page = 1) {
 var basic = Object.freeze({
 	getRoomBaseInfo: getRoomBaseInfo,
 	getRoomInfo: getRoomInfo,
+	getRoomGiftList: getRoomGiftList,
 	getRoomFansCount: getRoomFansCount,
 	getRoomMessage: getRoomMessage,
 	getAnchorFollwerList: getAnchorFollwerList,
@@ -1154,7 +1168,6 @@ class RoomService extends EventEmitter {
     this.roomURL = config.url || '23058';
     this.roomId = config.roomId || this.roomURL;
     this.config = config;
-    this.connectDirectly =
 
     this._api = new Api();
     this._danmakuService = null;

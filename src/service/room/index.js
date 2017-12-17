@@ -12,7 +12,6 @@ export default class RoomService extends EventEmitter {
     this.roomURL = config.url || '23058'
     this.roomId = config.roomId || this.roomURL
     this.config = config
-    this.connectDirectly =
 
     this._api = new Api()
     this._danmakuService = null

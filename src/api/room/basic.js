@@ -38,6 +38,19 @@ export function getRoomInfo () {
   })
 }
 
+// 获取直播间礼物列表
+export function getRoomGiftList () {
+  return this.get({
+    uri: `gift/v2/live/room_gift_list`,
+    params: {
+      roomid: this.roomId
+    }
+  }).then(res => {
+    let data = JSON.parse(res).data
+    return data
+  })
+}
+
 // 获取直播间粉丝数
 export function getRoomFansCount (anchorId) {
   return this.get({
