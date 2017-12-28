@@ -971,6 +971,12 @@ function joinRaffle (roomId, raffleId) {
     params: {
       roomid: roomId,
       raffleId
+    },
+    headers: {
+      'Host': 'api.live.bilibili.com',
+      'Origin': 'http://live.bilibili.com',
+      'Referer': 'http://live.bilibili.com/' + roomId,
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
     }
   }).then(res => {
     let data = JSON.parse(res);
@@ -991,7 +997,6 @@ function getRaffleReward (roomId, raffleId) {
     return data
   })
 }
-
 
 var activity = Object.freeze({
 	joinSmallTV: joinSmallTV,
