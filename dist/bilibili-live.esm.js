@@ -964,7 +964,26 @@ function getSmallTVReward (roomId, tvId) {
   })
 }
 
-// 参加丰收祭典
+// 获取房间抽奖列表
+function checkRaffle (roomId) {
+  return this.get({
+    uri: 'activity/v1/Raffle/check',
+    params: {
+      roomid: roomId
+    },
+    headers: {
+      'Host': 'api.live.bilibili.com',
+      'Origin': 'http://live.bilibili.com',
+      'Referer': 'http://live.bilibili.com/' + roomId,
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    }
+  }).then(res => {
+    let data = JSON.parse(res);
+    return data
+  })
+}
+
+// 参加房间抽奖
 function joinRaffle (roomId, raffleId) {
   return this.get({
     uri: 'activity/v1/Raffle/join',
@@ -984,7 +1003,7 @@ function joinRaffle (roomId, raffleId) {
   })
 }
 
-// 查看丰收祭典奖励
+// 查看抽奖奖励
 function getRaffleReward (roomId, raffleId) {
   return this.get({
     uri: 'activity/v1/Raffle/notice',
@@ -1001,6 +1020,7 @@ function getRaffleReward (roomId, raffleId) {
 var activity = Object.freeze({
 	joinSmallTV: joinSmallTV,
 	getSmallTVReward: getSmallTVReward,
+	checkRaffle: checkRaffle,
 	joinRaffle: joinRaffle,
 	getRaffleReward: getRaffleReward
 });
