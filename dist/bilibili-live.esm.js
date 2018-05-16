@@ -96,7 +96,7 @@ function decodeBuffer (buff) {
         let body = JSON.parse(textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)));
         data.body.push(body);
       } catch (e) {
-        console.log("decode body error:", textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)), data);
+        console.log('decode body error:', textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)), data);
       }
     }
   } else if (data.op && data.op === Consts.WS_OP_HEARTBEAT_REPLY) {
@@ -233,7 +233,7 @@ function decodeData (buff) {
       messages.push(data);
     }
   } catch (e) {
-    console.log("Socket message error", buff, e);
+    console.log('Socket message error', buff, e);
   }
   return messages
 }
@@ -589,6 +589,16 @@ function getRoomGiftList () {
   })
 }
 
+// 获取直播间礼物配置
+function getRoomGiftConfig () {
+  return this.get({
+    uri: `gift/v3/live/gift_config`
+  }).then(res => {
+    let data = JSON.parse(res).data;
+    return data
+  })
+}
+
 // 获取直播间粉丝数
 function getRoomFansCount (anchorId) {
   return this.get({
@@ -693,6 +703,7 @@ var basic = Object.freeze({
 	getRoomBaseInfo: getRoomBaseInfo,
 	getRoomInfo: getRoomInfo,
 	getRoomGiftList: getRoomGiftList,
+	getRoomGiftConfig: getRoomGiftConfig,
 	getRoomFansCount: getRoomFansCount,
 	getRoomMessage: getRoomMessage,
 	getAnchorFollwerList: getAnchorFollwerList,
@@ -708,7 +719,7 @@ function checkUserLogin () {
     uri: 'User/getUserInfo'
   }).then(res => {
     let data = JSON.parse(res);
-    if (data.code == 'REPONSE_OK') {
+    if (data.code === 0 || data.msg === 'success' || data.message === 'success') {
       return true
     }
     return false
@@ -936,6 +947,15 @@ var anchor = Object.freeze({
 	deleteAdmin: deleteAdmin
 });
 
+function generateUA (roomId) {
+  return {
+    'Host': 'api.live.bilibili.com',
+    'Origin': 'http://live.bilibili.com',
+    'Referer': 'http://live.bilibili.com/' + roomId,
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+  }
+}
+
 // 参与小电视抽奖
 function joinSmallTV (roomId, tvId) {
   return this.get({
@@ -971,12 +991,7 @@ function checkRaffle (roomId) {
     params: {
       roomid: roomId
     },
-    headers: {
-      'Host': 'api.live.bilibili.com',
-      'Origin': 'http://live.bilibili.com',
-      'Referer': 'http://live.bilibili.com/' + roomId,
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-    }
+    headers: generateUA(roomId)
   }).then(res => {
     let data = JSON.parse(res);
     return data
@@ -991,12 +1006,7 @@ function joinRaffle (roomId, raffleId) {
       roomid: roomId,
       raffleId
     },
-    headers: {
-      'Host': 'api.live.bilibili.com',
-      'Origin': 'http://live.bilibili.com',
-      'Referer': 'http://live.bilibili.com/' + roomId,
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-    }
+    headers: generateUA(roomId)
   }).then(res => {
     let data = JSON.parse(res);
     return data
@@ -1017,12 +1027,27 @@ function getRaffleReward (roomId, raffleId) {
   })
 }
 
+// 领取活动礼物
+function getReceiveGift (roomId) {
+  return this.get({
+    uri: 'activity/v1/Common/getReceiveGift',
+    params: {
+      roomid: roomId
+    },
+    headers: generateUA(roomId)
+  }).then(res => {
+    let data = JSON.parse(res);
+    return data
+  })
+}
+
 var activity = Object.freeze({
 	joinSmallTV: joinSmallTV,
 	getSmallTVReward: getSmallTVReward,
 	checkRaffle: checkRaffle,
 	joinRaffle: joinRaffle,
-	getRaffleReward: getRaffleReward
+	getRaffleReward: getRaffleReward,
+	getReceiveGift: getReceiveGift
 });
 
 let apis$1 = Object.assign({}, basic$1, audience, anchor, activity);

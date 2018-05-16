@@ -24,7 +24,7 @@ function decodeBuffer (buff) {
         let body = JSON.parse(textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)))
         data.body.push(body)
       } catch (e) {
-        console.log("decode body error:", textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)), data)
+        console.log('decode body error:', textDecoder.write(buff.slice(offset + headerLen, offset + packetLen)), data)
       }
     }
   } else if (data.op && data.op === Consts.WS_OP_HEARTBEAT_REPLY) {
@@ -161,7 +161,7 @@ function decodeData (buff) {
       messages.push(data)
     }
   } catch (e) {
-    console.log("Socket message error", buff, e)
+    console.log('Socket message error', buff, e)
   }
   return messages
 }

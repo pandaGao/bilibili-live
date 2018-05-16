@@ -51,6 +51,16 @@ export function getRoomGiftList () {
   })
 }
 
+// 获取直播间礼物配置
+export function getRoomGiftConfig () {
+  return this.get({
+    uri: `gift/v3/live/gift_config`
+  }).then(res => {
+    let data = JSON.parse(res).data
+    return data
+  })
+}
+
 // 获取直播间粉丝数
 export function getRoomFansCount (anchorId) {
   return this.get({
