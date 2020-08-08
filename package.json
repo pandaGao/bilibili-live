@@ -2,27 +2,28 @@
   "name": "bilibili-live",
   "version": "1.0.10",
   "description": "A Node Toolkit for bilibili live service",
-  "main": "dist/bilibili-live.js",
-  "module": "dist/bilibili-live.esm.js",
+  "main": "dist/bilibili-live.min.js",
+  "module": "src/index.js",
   "scripts": {
     "build": "rollup -c",
-    "build:cjs": "rollup ./src/index.js --output.format cjs --output.file ./dist/bilibili-live.js",
-    "build:es": "rollup ./src/index.js --output.format es --output.file ./dist/bilibili-live.esm.js",
-    "test:user": "node ./test/user.js",
-    "test:room": "node --inspect ./test/room.js",
-    "test:api": "node ./test/api.js",
-    "test:action": "node --inspect ./test/action.js"
+    "lint": "eslint src/**/*.js",
+    "test:danmaku": "node ./test/danmaku.js"
   },
   "author": "pandaGao <me@pandagao.com>",
   "license": "MIT",
   "dependencies": {
-    "lodash": "^4.17.4",
-    "ws": "^3.0.0"
+    "eventemitter3": "^4.0.4",
+    "ws": "^7.3.1"
   },
   "devDependencies": {
-    "rollup": "^0.48.2",
-    "rollup-plugin-commonjs": "^8.2.0",
-    "rollup-plugin-node-resolve": "^3.0.0"
+    "eslint": "^7.6.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "rollup": "^2.23.0",
+    "rollup-plugin-terser": "^6.1.0"
   },
   "repository": {
     "type": "git",
