@@ -1,8 +1,10 @@
 # Bilibili live
 
+![Node.js Package](https://github.com/pandaGao/bilibili-live/workflows/Node.js%20Package/badge.svg)
 [![npm version](https://badge.fury.io/js/bilibili-live.svg)](https://badge.fury.io/js/bilibili-live)
 [![npm](https://img.shields.io/npm/dw/localeval.svg)](https://www.npmjs.com/package/bilibili-live)
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com)
+[![gitmoji](https://img.shields.io/badge/gitmoji-%20😜%20😍-FFDD67.svg)](https://gitmoji.carloscuesta.me)
 
 A Node.js Toolkit for Bilibili Live
 
