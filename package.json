@@ -7,12 +7,14 @@
   "scripts": {
     "build": "rollup -c",
     "lint": "eslint src/**/*.js",
+    "test:client": "node ./test/client.js",
     "test:danmaku": "node ./test/danmaku.js"
   },
   "author": "pandaGao <me@pandagao.com>",
   "license": "MIT",
   "dependencies": {
     "eventemitter3": "^4.0.4",
+    "got": "^11.5.2",
     "ws": "^7.3.1"
   },
   "devDependencies": {

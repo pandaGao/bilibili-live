@@ -104,6 +104,59 @@ new DanmakuService({ options })
 }
 ```
 
+### Client
+
+HTTP请求客户端
+
+```javascript
+import { Client } from 'bilibili-live'
+
+let client = new Client({ options })
+```
+#### Options
+
+| 属性 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| cookie | String | - | `必需` 用户Cookie |
+| userAgent | String | Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36 | 请求UA |
+| referer | String | https://live.bilibili.com | 请求referer |
+
+`Client` uses [got](https://github.com/sindresorhus/got) as HTTP client internally. See [got](https://github.com/sindresorhus/got)'s document for request options
+
+#### getCSRFToken()
+Return `csrf token` in cookie
+
+#### get(url, [options])
+Returns a Promise with `text` response
+
+```javascript
+client.get('https://live.bilibili.com').then(res => {
+  console.log(res) // html string
+})
+```
+
+#### getJSON(url, [options])
+Returns a Promise with `json` response
+
+```javascript
+client.get('https://api.bilibili.com/nav').then(res => {
+  console.log(res) // json response
+})
+```
+
+#### post(url, [options])
+Returns a Promise with `json` response
+
+```javascript
+client.get('https://api.live.bilibili.com/ajax/msg', {
+  form: {
+    roomid: 92052
+  }
+}).then(res => {
+  console.log(res) // json response
+})
+```
+
 ## License
 
 MIT

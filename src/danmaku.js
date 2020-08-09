@@ -17,11 +17,11 @@ function randomMid () {
 }
 
 export default class DanmakuService extends EventEmitter {
-  constructor (config = {}) {
+  constructor (options = {}) {
     super()
 
-    this.roomId = config.roomId
-    this.userId = config.userId || randomMid()
+    this.roomId = options.roomId
+    this.userId = options.userId || randomMid()
 
     this._socket = null
     this._heartbeatService = null
