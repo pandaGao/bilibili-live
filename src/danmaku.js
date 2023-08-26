@@ -43,8 +43,12 @@ export default class DanmakuService extends EventEmitter {
   disconnect () {
     clearTimeout(this._heartbeatService)
     clearTimeout(this._reconnectService)
-    this._checkErrorService.cancel()
-    this._socket.close()
+    if (this._checkErrorService) {
+      this._checkErrorService.cancel()
+    }
+    if (this._socket) {
+      this._socket.close()
+    }
     this._socket = null
   }
 
