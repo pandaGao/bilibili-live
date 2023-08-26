@@ -1,7 +1,7 @@
 import WebSocket from 'ws'
 import EventEmitter from 'eventemitter3'
 import { debounce } from './shared/util.js'
-import { encodeHeartbeat, encodeJoinRoom, decodeData } from './shared/proto.js'
+import { encodeHeartbeat, encodeJoinRoom, decodeData, encodeJoinRoomCustom } from './shared/proto.js'
 
 const WSSDMPROTOCOL = 'wss'
 const WSDMSERVER = 'broadcastlv.chat.bilibili.com'
@@ -96,7 +96,7 @@ export default class DanmakuService extends EventEmitter {
 
   sendJoinRoom () {
     if (this.customAuth) {
-      this._socket.send(createProto(OP_AUTH, JSON.stringify(this.customAuth)))
+      this._socket.send(encodeJoinRoomCustom(this.customAuth))
     } else {
       this._socket.send(encodeJoinRoom(this.roomId, this.userId))
     }

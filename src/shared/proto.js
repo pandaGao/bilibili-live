@@ -63,6 +63,11 @@ function encodeJoinRoom (roomid, uid, platform = PLATFORM, protover = ZLIB_PROTO
   return createProto(OP_AUTH, payload)
 }
 
+function encodeJoinRoomCustom (custom) {
+  const payload = JSON.stringify(custom)
+  return createProto(OP_AUTH, payload)
+}
+
 function encodeHeartbeat () {
   return createProto(OP_HEARTBEAT)
 }
@@ -158,6 +163,7 @@ function decodeData (buff) {
 
 export {
   encodeJoinRoom,
+  encodeJoinRoomCustom,
   encodeHeartbeat,
   decodeData
 }
