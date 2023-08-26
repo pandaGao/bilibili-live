@@ -23,6 +23,8 @@ export default class DanmakuService extends EventEmitter {
     this.roomId = options.roomId
     this.userId = options.userId || randomMid()
 
+    this.customAuth = options.customAuth
+
     this._socket = null
     this._heartbeatService = null
     this._reconnectService = null
@@ -93,7 +95,11 @@ export default class DanmakuService extends EventEmitter {
   }
 
   sendJoinRoom () {
-    this._socket.send(encodeJoinRoom(this.roomId, this.userId))
+    if (this.customAuth) {
+      this._socket.send(createProto(OP_AUTH, JSON.stringify(this.customAuth)))
+    } else {
+      this._socket.send(encodeJoinRoom(this.roomId, this.userId))
+    }
   }
 
   sendHeartbeat () {
