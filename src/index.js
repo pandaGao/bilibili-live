@@ -1,2 +1,2 @@
-export { default as DanmakuService } from './danmaku'
-export { default as Client } from './client'
+export { default as DanmakuService } from './danmaku.js'
+export { default as Client } from './client.js'
