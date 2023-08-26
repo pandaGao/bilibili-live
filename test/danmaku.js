@@ -1,4 +1,4 @@
-import { DanmakuService } from '../src/index.js'
+const { DanmakuService } = require('../dist/bilibili-live.min')
 
 function initRoom (auth) {
   new DanmakuService({

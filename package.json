@@ -4,7 +4,6 @@
   "description": "A Node Toolkit for bilibili live service",
   "main": "dist/bilibili-live.min.js",
   "module": "src/index.js",
-  "type": "module",
   "scripts": {
     "build": "rollup -c",
     "lint": "eslint src/**/*.js",
