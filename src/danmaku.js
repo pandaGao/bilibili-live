@@ -1,7 +1,7 @@
 import WebSocket from 'ws'
 import EventEmitter from 'eventemitter3'
 import { debounce } from './shared/util.js'
-import { encodeHeartbeat, encodeJoinRoom, decodeData } from './shared/proto.js'
+import { encodeHeartbeat, encodeJoinRoom, decodeData, encodeJoinRoomCustom } from './shared/proto.js'
 
 const WSSDMPROTOCOL = 'wss'
 const WSDMSERVER = 'broadcastlv.chat.bilibili.com'
@@ -23,6 +23,8 @@ export default class DanmakuService extends EventEmitter {
     this.roomId = options.roomId
     this.userId = options.userId || randomMid()
 
+    this.customAuth = options.customAuth
+
     this._socket = null
     this._heartbeatService = null
     this._reconnectService = null
@@ -41,8 +43,12 @@ export default class DanmakuService extends EventEmitter {
   disconnect () {
     clearTimeout(this._heartbeatService)
     clearTimeout(this._reconnectService)
-    this._checkErrorService.cancel()
-    this._socket.close()
+    if (this._checkErrorService) {
+      this._checkErrorService.cancel()
+    }
+    if (this._socket) {
+      this._socket.close()
+    }
     this._socket = null
   }
 
@@ -93,7 +99,11 @@ export default class DanmakuService extends EventEmitter {
   }
 
   sendJoinRoom () {
-    this._socket.send(encodeJoinRoom(this.roomId, this.userId))
+    if (this.customAuth) {
+      this._socket.send(encodeJoinRoomCustom(this.customAuth))
+    } else {
+      this._socket.send(encodeJoinRoom(this.roomId, this.userId))
+    }
   }
 
   sendHeartbeat () {

@@ -1,8 +1,8 @@
 const { DanmakuService } = require('../dist/bilibili-live.min')
 
-function initRoom (roomRealId) {
+function initRoom (auth) {
   new DanmakuService({
-    roomId: roomRealId
+    customAuth: auth
   }).connect()
     .on('open', () => {
       console.log('正在连接至弹幕服务器')
@@ -22,4 +22,8 @@ function initRoom (roomRealId) {
     })
 }
 
-initRoom(92052)
+initRoom({
+  roomid: 7688602,
+  uid: 269415357,
+  protover: 3
+})

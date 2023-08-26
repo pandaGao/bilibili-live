@@ -1,5 +1,5 @@
 import { StringDecoder } from 'string_decoder'
-import { inflateSync } from 'zlib'
+import { inflateSync, brotliDecompressSync } from 'zlib'
 
 const textDecoder = new StringDecoder('utf8')
 
@@ -9,8 +9,10 @@ const OP_HEARTBEAT_REPLY = 3
 const OP_SEND_SMS_REPLY = 5
 const OP_AUTH = 7
 const OP_AUTH_REPLY = 8
-const JSON_PROTOVER = 0
-const ZLIB_PROTOVER = 2
+const PROTOVER_JSON = 0
+const PROTOVER_ZLIB = 1
+const PROTOVER_DEFLATE = 2
+const PROTOVER_BROTLI = 3
 const SEQUENCE_ID = 0
 const PLATFORM = '3rd_party'
 
@@ -42,7 +44,7 @@ function createProto (action, payload = '') {
   // Header Length
   buff.writeInt16BE(HEADER_LENGTH, 4)
   // Version
-  buff.writeInt16BE(JSON_PROTOVER, 6)
+  buff.writeInt16BE(PROTOVER_JSON, 6)
   // Operation
   buff.writeInt32BE(action, 8)
   // Sequence ID
@@ -53,7 +55,7 @@ function createProto (action, payload = '') {
   return buff
 }
 
-function encodeJoinRoom (roomid, uid, platform = PLATFORM, protover = ZLIB_PROTOVER) {
+function encodeJoinRoom (roomid, uid, platform = PLATFORM, protover = PROTOVER_DEFLATE) {
   const payload = JSON.stringify({
     uid: uid * 1,
     roomid: roomid * 1,
@@ -63,45 +65,54 @@ function encodeJoinRoom (roomid, uid, platform = PLATFORM, protover = ZLIB_PROTO
   return createProto(OP_AUTH, payload)
 }
 
+function encodeJoinRoomCustom (custom) {
+  const payload = JSON.stringify(custom)
+  return createProto(OP_AUTH, payload)
+}
+
 function encodeHeartbeat () {
   return createProto(OP_HEARTBEAT)
 }
 
-function decodeProto (buffer) {
+function decodeProto (buffer, messages) {
   let offset = 0
   const bufferLength = buffer.byteLength
-  const protos = []
   while (offset < bufferLength) {
-    const packetLength = buffer.readInt32BE(offset + 0)
+    const packetLength = buffer.readInt32BE(offset)
     const headerLength = buffer.readInt16BE(offset + 4)
     const version = buffer.readInt16BE(offset + 6)
     const operation = buffer.readInt32BE(offset + 8)
     const sequence = buffer.readInt32BE(offset + 12)
 
-    let body = ''
+    const addMessage = (body) => {
+      messages.push({
+        packetLength,
+        headerLength,
+        version,
+        operation,
+        sequence,
+        body
+      })
+    }
     if (operation === OP_AUTH_REPLY) {
-      body = ''
+      addMessage('')
     } else if (operation === OP_HEARTBEAT_REPLY) {
-      body = buffer.readInt32BE(offset + headerLength)
+      addMessage(buffer.readInt32BE(offset + headerLength))
     } else {
       const bodyBuffer = buffer.slice(offset + headerLength, offset + packetLength)
-      if (version === ZLIB_PROTOVER) {
-        body = inflateSync(bodyBuffer)
-      } else if (version === JSON_PROTOVER) {
-        body = JSON.parse(textDecoder.write(bodyBuffer))
+      if (version === PROTOVER_JSON) {
+        const body = JSON.parse(textDecoder.write(bodyBuffer))
+        addMessage(body)
+      } else if (version === PROTOVER_ZLIB || version === PROTOVER_DEFLATE) {
+        decodeProto(inflateSync(bodyBuffer), messages)
+      } else if (version === PROTOVER_BROTLI) {
+        decodeProto(brotliDecompressSync(bodyBuffer), messages)
+      } else {
+        console.error(`[bilibili-live]: Unhandled body version ${version}`)
       }
     }
     offset += packetLength
-    protos.push({
-      packetLength,
-      headerLength,
-      version,
-      operation,
-      sequence,
-      body
-    })
   }
-  return protos
 }
 
 function parseMessage (msg) {
@@ -129,17 +140,7 @@ function parseMessage (msg) {
 function decodeData (buff) {
   const messages = []
   try {
-    const protos = decodeProto(buff)
-    protos.forEach(proto => {
-      if (proto.version === ZLIB_PROTOVER) {
-        const bodyProtos = decodeProto(proto.body)
-        bodyProtos.forEach(p => {
-          messages.push(p)
-        })
-      } else {
-        messages.push(proto)
-      }
-    })
+    decodeProto(buff, messages)
   } catch (e) {
     console.error('[bilibili-live]: Socket message error', buff, e)
   }
@@ -158,6 +159,7 @@ function decodeData (buff) {
 
 export {
   encodeJoinRoom,
+  encodeJoinRoomCustom,
   encodeHeartbeat,
   decodeData
 }
